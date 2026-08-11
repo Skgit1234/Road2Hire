@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Road2Hire
+.env
+.env.*
+.vscode/
+*.log
