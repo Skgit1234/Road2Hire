@@ -1,6 +1,5 @@
-Paste this **entire content** into your `README.md` after deleting the existing content:
 
-````markdown
+
 # Road2Hire
 
 Road2Hire is an AI-powered career readiness platform that helps students understand their current skills, identify skill gaps, discover suitable career paths, and create personalized learning roadmaps.
