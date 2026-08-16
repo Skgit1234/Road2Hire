@@ -35,8 +35,6 @@
 
 ## 2. Resume NLP and Skill Extraction
 
-## 2. Resume NLP and Skill Extraction
-
 ### Paper 1 — Skill Extraction from Resumes and Job Offers across Six Languages
 
 * **Authors/Year:** Laura Vásquez-Rodríguez, Bertrand Audrin, Samuel Michel, Samuele Galli, Julneth Rogenhofer, Jacopo Negro Cusa, and Lonneke van der Plas (2026).
