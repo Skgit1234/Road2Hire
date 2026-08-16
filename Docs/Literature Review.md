@@ -57,6 +57,28 @@ The two papers collectively support the Resume NLP and Skill Extraction stage of
 
 ## 3. Semantic Skill Matching
 
+## 3. Semantic Skill Matching
+
+### Paper 1 — SkillMatch: Evaluating Self-supervised Learning of Skill Relatedness
+
+* **Authors/Year:** Jens-Joris Decorte, Jeroen Van Hautte, Thomas Demeester, and Chris Develder (2024).
+* **Problem:** The paper addresses the difficulty of accurately modeling relationships between professional skills. Traditional approaches may rely on explicit skill matches or general-purpose language representations, while there is a lack of dedicated benchmarks for evaluating whether skill representations capture meaningful semantic relatedness.
+* **Approach:** The authors introduce the SkillMatch benchmark for evaluating professional skill relatedness. They adapt a pre-trained Sentence-BERT model using a self-supervised learning approach based on skill co-occurrence information extracted from millions of job advertisements. Skill representations are compared according to their learned semantic relatedness, and the approach is evaluated against traditional representation-learning baselines.
+* **Key Finding:** The adapted domain-specific Sentence-BERT model substantially outperformed the baseline approaches on the SkillMatch benchmark, achieving an AUC-PR of 0.969 and an MRR of 0.357. The results demonstrate that adapting language models to the professional-skills domain can improve the representation of relationships between skills.
+* **Limitation:** The benchmark evaluates skill relatedness as an intrinsic task rather than performing candidate-to-job skill-gap analysis. Although the approach can determine whether two skills are semantically related, it does not identify which specific skills a candidate is missing for a target job or explain how those missing skills affect a career recommendation.
+
+### Paper 2 — An Automatic Skills Standardization Method Based on Subject Expert Knowledge Extraction and Semantic Matching
+
+* **Authors/Year:** Juan Bernabé-Moreno, Álvaro Tejeda-Lorente, Julio Herce-Zelaya, Carlos Porcel, and Enrique Herrera-Viedma (2019).
+* **Problem:** The study addresses the difficulty of defining consistent skill requirements for jobs in a rapidly changing labor market. The same job title can have different skill requirements across job postings, making it difficult to create standardized skill profiles and compare job requirements reliably.
+* **Approach:** The authors propose a pipeline that combines natural language processing, word embeddings, semantic expansion, domain knowledge, and semantic matching. GloVe word embeddings are created from job-posting data to represent semantic relationships between terms. Cluster analysis using t-SNE and DBSCAN is then used to identify groups of similar entities and generate seed entities. These seeds are expanded using a knowledge graph derived from Wikipedia, after which semantic matching is used to consolidate the identified skills into a more consistent skill representation.
+* **Key Finding:** The method was applied to Data Scientist job postings and demonstrated that embedding-based representations could identify meaningful relationships between skills. For example, the semantic representation around Python identified related programming languages such as Java, R, Scala, C, SQL, and MATLAB. The approach therefore demonstrates how semantic information can improve the standardization and modeling of job-related skills.
+* **Limitation:** The authors state that there is no ground-truth test set for objectively validating the quality of the proposed skill homogenization. In addition, the approach primarily focuses on standardizing skills associated with job profiles rather than comparing an individual candidate's extracted skills against a target job to identify specific skill gaps and provide personalized recommendations.
+
+### Relevance to Road2Hire
+
+These two studies demonstrate that semantic representations can provide a stronger basis for skill comparison than simple keyword matching. SkillMatch shows how domain-adapted Sentence-BERT representations can capture relationships between professional skills, while Bernabé-Moreno et al. demonstrate how embeddings, semantic expansion, and knowledge-based methods can standardize skills across job postings. However, existing approaches do not fully address the candidate-specific problem of comparing an individual's skills with the requirements of a target career and explicitly identifying the resulting skill gaps. Road2Hire aims to extend semantic skill matching toward explainable, candidate-specific skill-gap identification and personalized career guidance.
+
 ## 4. Knowledge Graphs for Career Guidance
 
 ## 5. Career Prediction and Recommendation
