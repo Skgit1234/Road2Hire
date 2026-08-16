@@ -89,6 +89,44 @@ These two studies demonstrate that semantic representations can provide a strong
 
 ## 5. Career Prediction and Recommendation
 
+### Paper 1 — Demand-Aware Career Path Recommendations: A Reinforcement Learning Approach
+
+- **Authors/Year:** Marios Kokkodis and Panagiotis G. Ipeirotis (2021).
+
+- **Problem:** The authors address the challenge of recommending suitable career transitions for workers in dynamic online labor markets. Workers need to decide which skills to acquire to remain competitive, but they may have limited information about future market demand and their own ability to learn new skills. Conventional recommendation approaches may also rely heavily on historical behavior, which may not reflect current or future labor-market opportunities.
+
+- **Approach:** The paper proposes a framework based on a **Markov decision process (MDP)** to recommend career paths through feasible transitions between observed skillsets. **Reinforcement learning using Q-learning** is used to identify career paths that maximize expected long-term earnings. The framework also uses **Bayesian inference** to estimate a contractor's learning ability, **Word2Vec embeddings** to measure the learning affinity between skillsets, and **XGBoost** models to estimate future wages, labor demand, and labor supply.
+
+- **Key Finding:** The framework was evaluated using a dataset containing approximately **1.73 million job applications**. The results indicate that following the recommended career paths could produce an average wage increase of approximately **22%**. The recommended skill acquisitions also showed **47% greater diversity** than the skill acquisitions observed in the data. The authors further report potential marketplace revenue improvements of approximately **1.75%–6%**.
+
+- **Limitation:** The approach relies on skillsets and career transitions observed in the available data, which can limit its ability to recommend paths involving entirely new or insufficiently observed skill combinations. In addition, it does not directly process unstructured resumes or explicitly identify the individual skill gaps between a candidate's current skills and the requirements of a target career. Road2Hire aims to address this gap by combining resume-based skill extraction, semantic skill matching, skill-gap identification, and knowledge-graph-based career reasoning before generating personalized recommendations.
+
 ## 6. Explainable AI for Career Recommendation
 
+### Paper 1 — Explainable person–job recommendations: challenges, approaches, and comparative analysis
+
+- **Authors/Year:** Fang Tang, Renqi Zhu, Feng Yao, Junzhi Wang, Lailong Luo, and Bo Li (2025).
+
+- **Problem:** The paper examines the lack of transparency in person–job recommendation systems, particularly those based on complex machine-learning and deep-learning models. When recommendation decisions are difficult to understand, jobseekers and recruiters may have difficulty determining why a particular candidate was matched with a specific job. Explainability is therefore important for improving trust, transparency, and the practical usefulness of person–job recommendations.
+
+- **Approach:** The paper presents a systematic review of **85 studies** on explainable person–job recommendation. The authors categorize explainability approaches across different stages of recommendation systems, including data-level methods such as feature importance and causal analysis, model-level methods such as attention mechanisms and knowledge-graph reasoning, and output-level methods such as **SHAP, LIME, counterfactual explanations, and natural-language explanations**. The review compares how these approaches provide explanations for person–job recommendations and discusses their relationship with recommendation performance.
+
+- **Key Finding:** The review shows that different explainability techniques provide different levels of transparency and recommendation performance. The analysis reports that **counterfactual approaches achieved an Explainability-Performance (E-P) score of 0.95**. The reviewed studies also demonstrate that knowledge-enhanced and hybrid recommendation approaches can provide explanations through relationships or paths within knowledge graphs while maintaining strong recommendation performance.
+
+- **Limitation:** The reviewed approaches often focus on explaining why a particular recommendation or matching decision was produced, rather than providing a complete, candidate-specific development plan. They generally do not integrate resume-based skill extraction, explicit skill-gap identification, and personalized learning recommendations into one continuous explainable pipeline. Road2Hire aims to extend explainable career recommendation by connecting the recommended career to the candidate's existing skills, missing skills, and recommended learning actions.
+
+
 ## 7. Personalized Retrieval-Augmented Generation (RAG)
+
+### Paper 1 — RAG-Rec: Retrieval Augmented Generation for Robust Personalized Recommendation Systems
+
+- **Authors/Year:** Ahmed Aly, Ahmed Ibrahim, and Rasha Kashef (2026).
+
+- **Problem:** The paper addresses the challenges of generating personalized recommendations using Large Language Models (LLMs), including hallucination, the computational cost of fine-tuning, and the difficulty of providing relevant recommendations from large amounts of information. The study investigates whether Retrieval-Augmented Generation (RAG) can improve personalized recommendation by providing an LLM with relevant information retrieved from user preference data.
+
+- **Approach:** The authors propose **RAG-Rec**, a Retrieval-Augmented Generation framework consisting of a retriever, a generator, and a database containing user preference information. A fine-tuned **MiniLM-L6-v2** model converts user rating histories into 384-dimensional vector representations. These embeddings are stored in a vector database, and **cosine similarity** is used to retrieve users with similar preferences. Items preferred by similar users are then provided as contextual information to an LLM, such as **GPT-4o or GPT-4o mini**, which generates personalized recommendations based on the retrieved information.
+
+- **Key Finding:** The framework was evaluated using the **MovieLens 1M dataset**. The retriever achieved a **Hit Rate@40 of 0.9942** and a **Recall of 0.43764**. The study demonstrates that RAG can provide contextual information to an LLM for personalized recommendation and support more conversational recommendation interactions. However, the authors also observe that the LLM component can introduce additional filtering or noise compared with using the retriever independently.
+
+- **Limitation:** The framework primarily relies on **user-preference similarity and collaborative filtering** rather than candidate-specific professional information. It does not directly process unstructured resumes, identify explicit skill gaps, or incorporate job requirements and career knowledge graphs. Therefore, it does not address the problem of generating personalized career and learning recommendations grounded in a candidate's specific skills, missing skills, and target career. Road2Hire aims to extend personalized RAG by retrieving information using candidate skill profiles, identified skill gaps, job requirements, and career-related knowledge-graph information.
+
