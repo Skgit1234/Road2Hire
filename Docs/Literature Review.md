@@ -57,8 +57,6 @@ The two papers collectively support the Resume NLP and Skill Extraction stage of
 
 ## 3. Semantic Skill Matching
 
-## 3. Semantic Skill Matching
-
 ### Paper 1 — SkillMatch: Evaluating Self-supervised Learning of Skill Relatedness
 
 * **Authors/Year:** Jens-Joris Decorte, Jeroen Van Hautte, Thomas Demeester, and Chris Develder (2024).
