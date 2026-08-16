@@ -79,6 +79,14 @@ These two studies demonstrate that semantic representations can provide a strong
 
 ## 4. Knowledge Graphs for Career Guidance
 
+### Paper 1 — Job Posting-Enriched Knowledge Graph for Skills-based Matching
+
+* **Authors/Year:** Maurits de Groot, Jelle Schutte, and David Graus (2021).
+* **Problem:** The paper addresses the challenge of maintaining relevant occupational profiles in a changing labor market, where skill requirements evolve due to factors such as digitization and globalization. It aims to develop a flexible representation of occupations and skills that can support skill similarity analysis and career pathfinding while incorporating current labor-market information.
+* **Approach:** The authors construct a Knowledge Graph (KG) by combining the ISCO occupational classification with the ESCO skills taxonomy and enriching these taxonomies with information from approximately 600,000 Dutch job postings. The graph represents skills and occupations as nodes and their relationships as weighted edges based on co-occurrence information. The KG is used for several tasks, including link prediction with Node2Vec, career pathfinding using Dijkstra's shortest-path algorithm, and identification of distinctive skills using a TF-IDF-based approach.
+* **Key Finding:** The resulting knowledge graph contains 1,220 nodes and 3,910 edges. The study demonstrates that the graph can be used to identify potential skill-occupation relationships and support career pathfinding. The results also show that Node2Vec can perform effective link prediction in the constructed graph, while the career-pathfinding approach can identify logical transitions between occupations.
+* **Limitation:** The approach focuses primarily on relationships between occupations and skills at the labor-market level rather than on individual candidates. It does not directly process an individual's resume, perform candidate-specific semantic skill matching, or explicitly identify the skills that a particular candidate needs to develop for a target occupation. Road2Hire aims to extend this type of knowledge-graph representation by integrating candidate skill profiles and identified skill gaps into personalized career guidance.
+
 ## 5. Career Prediction and Recommendation
 
 ## 6. Explainable AI for Career Recommendation
