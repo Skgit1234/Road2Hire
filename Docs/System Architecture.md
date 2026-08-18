@@ -38,6 +38,26 @@ The extracted and processed information is passed to the recommendation and expl
 
 ## 5. Database and Knowledge Graph
 
+The database stores application data such as user profiles, resume information, extracted skills, career information, and recommendation-related data.
+
+The knowledge graph represents relationships between skills, jobs, careers, and learning resources. It supports relationship-based analysis and helps the system identify relevant career paths and learning requirements.
+
 ## 6. RAG and Recommendation Layer
 
+The recommendation layer combines candidate information, identified skill gaps, career predictions, and knowledge-graph information to generate personalized recommendations.
+
+The RAG component retrieves relevant information from the available knowledge base and provides it as context for generating personalized career and learning guidance. Explainable AI provides understandable reasons for the generated recommendations.
+
 ## 7. Data Flow
+
+The main data flow of Road2Hire is:
+
+1. User uploads a resume through the frontend.
+2. Backend receives and processes the resume.
+3. NLP extracts and normalizes candidate skills.
+4. Semantic matching compares candidate skills with job and career requirements.
+5. The system identifies the candidate's skill gaps.
+6. Knowledge-graph relationships and career prediction are used to identify suitable career paths.
+7. Relevant information is retrieved for personalized recommendations.
+8. Explainable AI generates reasons for the recommendations.
+9. Personalized career and learning recommendations are returned to the frontend.
