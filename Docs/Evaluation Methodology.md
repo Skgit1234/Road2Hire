@@ -17,7 +17,13 @@ Each major component of Road2Hire will be evaluated separately using appropriate
 - **Personalized RAG:** Evaluate the relevance and groundedness of generated responses against the retrieved information and candidate profile.
 
 ## 3. End-to-End System Evaluation
+The complete Road2Hire pipeline will be evaluated using representative candidate profiles and target career or job requirements. The evaluation will measure whether the integrated system can successfully process a resume, identify relevant skills and skill gaps, recommend suitable career paths, explain the recommendations, and provide personalized learning guidance.
+
+End-to-end evaluation will consider overall recommendation relevance, skill-gap accuracy, explanation quality, and usefulness of the generated recommendations.
 
 ## 4. Baseline Comparison
+Road2Hire will be compared with a simpler keyword-based skill matching approach. The baseline will compare skills extracted from a candidate's resume with job or career requirements using direct keyword matching.
+
+The performance of the baseline and Road2Hire will be compared using relevant evaluation metrics. This comparison will help determine whether semantic skill matching and the integrated Road2Hire approach provide improvements over conventional keyword-based matching.
 
 ## 5. User Evaluation
