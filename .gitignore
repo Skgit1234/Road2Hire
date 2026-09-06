@@ -171,6 +171,7 @@ Datasets/Skill_Taxonomy/Raw/*
 
 Datasets/Skill_Taxonomy/Processed/*
 !Datasets/Skill_Taxonomy/Processed/.gitkeep
+!Datasets/Skill_Taxonomy/Processed/Skill_Taxonomy.csv
 
 # --------------------------
 # ESCO Raw Dataset
@@ -211,3 +212,4 @@ Datasets/Learning_Resources/Processed/*
 
 Docs/*
 !Docs/.gitkeep
+!Docs/Skill_Taxonomy_Strategy.md
