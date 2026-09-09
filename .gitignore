@@ -206,6 +206,7 @@ Learning Resources Processed
 
 Datasets/Learning_Resources/Processed/*
 !Datasets/Learning_Resources/Processed/.gitkeep
+!Datasets/Learning_Resources/Processed/Learning_Resources.csv
 
 ==========================
 Documentation
