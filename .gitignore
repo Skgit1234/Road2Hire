@@ -1,15 +1,15 @@
-# ==========================
-# Python
-# ==========================
+==========================
+Python
+==========================
 
-__pycache__/
+pycache/
 *.py[codz]
 *$py.class
 *.so
 
-# ==========================
-# Python Environments
-# ==========================
+==========================
+Python Environments
+==========================
 
 .venv/
 venv/
@@ -20,19 +20,19 @@ venv.bak/
 .pdm-python
 .pdm-build/
 .pixi/
-__pypackages__/
+pypackages/
 
-# ==========================
-# Environment / Secrets
-# ==========================
+==========================
+Environment / Secrets
+==========================
 
 .env
 .env.*
 !.env.example
 
-# ==========================
-# Build / Distribution
-# ==========================
+==========================
+Build / Distribution
+==========================
 
 build/
 dist/
@@ -51,9 +51,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# ==========================
-# Testing / Coverage
-# ==========================
+==========================
+Testing / Coverage
+==========================
 
 .pytest_cache/
 .coverage
@@ -75,21 +75,21 @@ coverage.xml
 *.cover
 *.py.cover
 
-# ==========================
-# Logs
-# ==========================
+==========================
+Logs
+==========================
 
 *.log
 
-# ==========================
-# Jupyter
-# ==========================
+==========================
+Jupyter
+==========================
 
 .ipynb_checkpoints/
 
-# ==========================
-# Django / Flask
-# ==========================
+==========================
+Django / Flask
+==========================
 
 local_settings.py
 db.sqlite3
@@ -97,28 +97,28 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
-# ==========================
-# Scrapy
-# ==========================
+==========================
+Scrapy
+==========================
 
 .scrapy/
 
-# ==========================
-# IDE
-# ==========================
+==========================
+IDE
+==========================
 
 .vscode/
 .idea/
 
-# ==========================
-# Temporary Files
-# ==========================
+==========================
+Temporary Files
+==========================
 
 tempCodeRunnerFile.py
 
-# ==========================
-# Dataset Archives
-# ==========================
+==========================
+Dataset Archives
+==========================
 
 *.zip
 *.7z
@@ -126,90 +126,92 @@ tempCodeRunnerFile.py
 *.tar
 *.gz
 
-# ==========================
-# ROAD2HIRE DATASETS
-# ==========================
-
-# --------------------------
-# Resume Raw Datasets
-# --------------------------
+==========================
+ROAD2HIRE DATASETS
+==========================
+--------------------------
+Resume Raw Datasets
+--------------------------
 
 Datasets/Resumes/Raw/*
 !Datasets/Resumes/Raw/.gitkeep
 
-# --------------------------
-# Resume Processed Datasets
-# --------------------------
+--------------------------
+Resume Processed Datasets
+--------------------------
 
 Datasets/Resumes/Processed/*
 !Datasets/Resumes/Processed/.gitkeep
 
-# --------------------------
-# Job Description Raw
-# --------------------------
+--------------------------
+Job Description Raw
+--------------------------
 
 Datasets/Job_Descriptions/Raw/*
 !Datasets/Job_Descriptions/Raw/.gitkeep
 
-# --------------------------
-# Job Description Processed
-# --------------------------
+--------------------------
+Job Description Processed
+--------------------------
 
 Datasets/Job_Descriptions/Processed/*
 !Datasets/Job_Descriptions/Processed/.gitkeep
 
-# --------------------------
-# Skill Taxonomy Raw
-# --------------------------
+--------------------------
+Skill Taxonomy Raw
+--------------------------
 
 Datasets/Skill_Taxonomy/Raw/*
 !Datasets/Skill_Taxonomy/Raw/.gitkeep
 
-# --------------------------
-# Skill Taxonomy Processed
-# --------------------------
+--------------------------
+Skill Taxonomy Processed
+--------------------------
 
 Datasets/Skill_Taxonomy/Processed/*
 !Datasets/Skill_Taxonomy/Processed/.gitkeep
 !Datasets/Skill_Taxonomy/Processed/Skill_Taxonomy.csv
 
-# --------------------------
-# ESCO Raw Dataset
-# --------------------------
+--------------------------
+ESCO Raw Dataset
+--------------------------
 
 Datasets/ESCO_ONET/ESCO/*
 
-# --------------------------
-# ONET Raw Dataset
-# --------------------------
+--------------------------
+ONET Raw Dataset
+--------------------------
 
 Datasets/ESCO_ONET/ONET/*
 
-# --------------------------
-# ESCO/ONET Mappings
-# --------------------------
+--------------------------
+ESCO/ONET Mappings
+--------------------------
 
 Datasets/ESCO_ONET/Mappings/*
 !Datasets/ESCO_ONET/Mappings/.gitkeep
+!Datasets/ESCO_ONET/Mappings/ESCO_Skill_Mapping.csv
+!Datasets/ESCO_ONET/Mappings/ONET_Skill_Mapping.csv
 
-# --------------------------
-# Learning Resources Raw
-# --------------------------
+--------------------------
+Learning Resources Raw
+--------------------------
 
 Datasets/Learning_Resources/Raw/*
 !Datasets/Learning_Resources/Raw/.gitkeep
 
-# --------------------------
-# Learning Resources Processed
-# --------------------------
+--------------------------
+Learning Resources Processed
+--------------------------
 
 Datasets/Learning_Resources/Processed/*
 !Datasets/Learning_Resources/Processed/.gitkeep
 
-# ==========================
-# Documentation
-# ==========================
+==========================
+Documentation
+==========================
 
 Docs/*
 !Docs/.gitkeep
 !Docs/Skill_Taxonomy_Strategy.md
+!Docs/ESCO_ONET_Mapping_Strategy.md
