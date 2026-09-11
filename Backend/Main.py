@@ -6,11 +6,15 @@ from Core.database import engine
 from Core.database import Base, engine
 from Models import User
 
+from Api.auth import router as auth_router
+
 app = FastAPI(
     title="Road2Hire API",
     description="Backend API for the Road2Hire career readiness platform.",
     version="0.1.0",
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/")
