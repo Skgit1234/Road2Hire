@@ -1,0 +1,46 @@
+{
+  "skills": [
+    {
+      "id": "SK001",
+      "name": "Python"
+    },
+    {
+      "id": "SK002",
+      "name": "Machine Learning"
+    },
+    {
+      "id": "SK003",
+      "name": "NumPy"
+    },
+    {
+      "id": "SK004",
+      "name": "Pandas"
+    },
+    {
+      "id": "SK005",
+      "name": "Scikit-learn"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "SK002",
+      "relationship": "requires",
+      "target": "SK001"
+    },
+    {
+      "source": "SK002",
+      "relationship": "related-to",
+      "target": "SK005"
+    },
+    {
+      "source": "SK001",
+      "relationship": "related-to",
+      "target": "SK003"
+    },
+    {
+      "source": "SK001",
+      "relationship": "related-to",
+      "target": "SK004"
+    }
+  ]
+}
