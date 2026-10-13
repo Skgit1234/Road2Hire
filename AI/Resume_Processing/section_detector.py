@@ -1,4 +1,3 @@
-
 """Detect common sections in cleaned resume text."""
 
 import re
@@ -47,6 +46,14 @@ SECTION_ALIASES = {
         "licenses and certifications",
         "licenses & certifications",
         "professional certifications",
+    },
+    "summary": {
+        "summary",
+        "professional summary",
+        "profile",
+        "career summary",
+        "objective",
+        "career objective",
     },
 }
 

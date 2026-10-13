@@ -73,6 +73,8 @@ The output can be exported to UTF-8 JSON for evaluation and downstream processin
 
 ## 7. Evaluation and Testing
 
+### Automated Tests
+
 Automated tests cover:
 
 - Text cleaning
@@ -82,15 +84,33 @@ Automated tests cover:
 - Section detection
 - Pipeline execution and JSON export
 
-Initial test command:
+**Test command:**
 
 ```cmd
 python -m unittest discover -s tests\AI -p "test_*.py" -v
 ```
 
-Initial test result: 6 tests passed.
+**Result:** All 6 automated tests passed.
 
-These results verify the tested scenarios only. Evaluation on representative resume samples is still required before claiming general extraction accuracy.
+### Initial Sample Resume Evaluation
+
+A fictional, single-page PDF resume was generated to evaluate the end-to-end pipeline. It contains a professional summary, education, experience, skills, projects, and certifications.
+
+| Evaluation item      | Result                               |
+| -------------------- | ------------------------------------ |
+| Input format         | Text-based PDF                       |
+| Pages processed      | 1                                    |
+| Extracted characters | 667                                  |
+| Extraction status    | Success                              |
+| Expected sections    | 6                                    |
+| Detected sections    | 6                                    |
+| Section detection    | Passed for all six expected sections |
+
+**Detected sections:** Summary, Education, Experience, Skills, Projects, and Certifications.
+
+The pipeline extracted the PDF text and correctly identified all six expected sections in this sample.
+
+**Evaluation scope:** This is an initial evaluation using a generated, single-page resume with a simple layout. It does not establish general extraction accuracy across real resumes or complex layouts. Further evaluation is required for multi-column documents, tables, scanned PDFs, alternate headings, headers, and footers.
 
 ## 8. Dependencies
 
