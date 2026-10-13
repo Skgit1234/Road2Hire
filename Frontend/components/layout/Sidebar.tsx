@@ -328,7 +328,7 @@ export default function Sidebar() {
             </div>
           </div>
         </div>
-      </aside>
+     </aside>
     </>
   );
 }

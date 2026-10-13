@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -156,3 +157,42 @@ export default function LearningRoadmapPage() {
     </div>
   );
 }
+
+const roadmap = [
+  {
+    step: "01",
+    title: "Master React.js",
+    description:
+      "Strengthen your React fundamentals, hooks, state management, and component architecture.",
+    duration: "2 weeks",
+    progress: 65,
+    status: "In Progress",
+  },
+  {
+    step: "02",
+    title: "Learn Next.js",
+    description:
+      "Build modern applications using routing, server components, API integration, and deployment.",
+    duration: "2 weeks",
+    progress: 30,
+    status: "In Progress",
+  },
+  {
+    step: "03",
+    title: "Backend Development",
+    description:
+      "Learn REST APIs, authentication, databases, and backend application development.",
+    duration: "3 weeks",
+    progress: 0,
+    status: "Upcoming",
+  },
+  {
+    step: "04",
+    title: "Interview Preparation",
+    description:
+      "Practice DSA, technical interviews, behavioral questions, and real-world problem solving.",
+    duration: "2 weeks",
+    progress: 0,
+    status: "Upcoming",
+  },
+];

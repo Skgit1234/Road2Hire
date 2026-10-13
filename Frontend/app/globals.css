@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+
   --background: #f5f7fb;
   --background-soft: #f8fafc;
   --foreground: #111827;
@@ -18,6 +19,14 @@
   --border: #e2e8f0;
   --card: #ffffff;
   --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 18px rgba(15, 23, 42, 0.04);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --secondary: #7c3aed;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --card: #ffffff;
 }
 
 @theme inline {
@@ -35,6 +44,11 @@
   --color-sidebar-bg: var(--sidebar-bg);
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-text: var(--sidebar-text);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card: var(--card);
 
@@ -59,6 +73,7 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 button,
