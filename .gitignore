@@ -169,6 +169,7 @@ Skill Taxonomy Processed
 --------------------------
 
 Datasets/Skill_Taxonomy/Processed/*
+!Datasets/Skill_Taxonomy/Processed/Road2Hire_ESCO_Mapping.csv
 !Datasets/Skill_Taxonomy/Processed/.gitkeep
 !Datasets/Skill_Taxonomy/Processed/Skill_Taxonomy.csv
 
