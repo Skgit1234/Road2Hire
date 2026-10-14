@@ -1,0 +1,6 @@
+Road2Hire_Skill,ESCO_Skill_Id,ESCO_Skill_Name,Mapping_Type
+Python,http://data.europa.eu/esco/skill/ccd0a1d9-afda-43d9-b901-96344886e14d,Python (computer programming),exact_concept
+Machine Learning,http://data.europa.eu/esco/skill/3a2d5b45-56e4-4f5a-a55a-4a4a65afdc43,machine learning,exact_concept
+NumPy,,,unmapped
+Pandas,,,unmapped
+Scikit-learn,,,unmapped

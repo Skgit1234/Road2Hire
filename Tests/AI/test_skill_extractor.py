@@ -1,0 +1,193 @@
+"""Automated tests for Road2Hire skill extraction, normalization, and embeddings."""
+
+import pytest
+
+from AI.Skill_Extraction.skill_extractor import (
+    extract_skills,
+    load_skill_vocabulary,
+    normalize_skill_name,
+)
+from AI.Skill_Extraction.skill_taxonomy_mapper import (
+    load_esco_mapping,
+    map_skills_to_esco,
+)
+from AI.Skill_Extraction.skill_embeddings import (
+    cosine_similarity,
+    generate_skill_embeddings,
+)
+
+
+def test_load_skill_vocabulary():
+    vocabulary = load_skill_vocabulary()
+
+    assert "Python" in vocabulary
+    assert "Machine Learning" in vocabulary
+    assert "NumPy" in vocabulary
+    assert "Pandas" in vocabulary
+    assert "Scikit-learn" in vocabulary
+
+
+def test_normalize_skill_aliases():
+    assert normalize_skill_name("python") == "Python"
+    assert normalize_skill_name("ML") == "Machine Learning"
+    assert normalize_skill_name("sklearn") == "Scikit-learn"
+    assert normalize_skill_name("scikit learn") == "Scikit-learn"
+
+
+def test_unknown_skill_returns_none():
+    assert normalize_skill_name("unknown skill") is None
+
+
+def test_extract_skills_from_resume_sections():
+    resume_data = {
+        "source_file": "test_resume.pdf",
+        "sections": {
+            "skills": "Python, ML, NumPy, Pandas, sklearn"
+        },
+    }
+
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {
+        "Python",
+        "Machine Learning",
+        "NumPy",
+        "Pandas",
+        "Scikit-learn",
+    }
+    assert result["skill_count"] == 5
+
+
+def test_unknown_text_returns_no_skills():
+    resume_data = {
+        "sections": {
+            "skills": "Communication, teamwork, problem solving"
+        }
+    }
+
+    result = extract_skills(resume_data)
+
+    assert result["skills"] == []
+    assert result["skill_count"] == 0
+
+
+def test_contact_information_is_ignored():
+    resume_data = {
+        "sections": {
+            "contact_information": "Python developer",
+            "skills": "Pandas and NumPy",
+        }
+    }
+
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {"Pandas", "NumPy"}
+    assert "Python" not in extracted_names
+
+
+def test_load_esco_mapping():
+    mappings = load_esco_mapping()
+
+    assert mappings["python"]["Mapping_Type"] == "exact_concept"
+    assert mappings["python"]["ESCO_Skill_Id"].startswith(
+        "http://data.europa.eu/esco/skill/"
+    )
+    assert mappings["machine learning"]["Mapping_Type"] == "exact_concept"
+
+
+def test_map_extracted_skills_to_esco():
+    extracted_skills = [
+        {
+            "skill": "Python",
+            "source_sections": ["skills"],
+            "occurrences": [],
+        },
+        {
+            "skill": "Machine Learning",
+            "source_sections": ["projects"],
+            "occurrences": [],
+        },
+        {
+            "skill": "NumPy",
+            "source_sections": ["skills"],
+            "occurrences": [],
+        },
+    ]
+
+    mapped = map_skills_to_esco(extracted_skills)
+    by_name = {item["skill"]: item for item in mapped}
+
+    assert (
+        by_name["Python"]["ESCO_Skill_Name"]
+        == "Python (computer programming)"
+    )
+    assert by_name["Machine Learning"]["ESCO_Mapping_Type"] == "exact_concept"
+    assert by_name["NumPy"]["ESCO_Mapping_Type"] == "unmapped"
+    assert by_name["NumPy"]["ESCO_Skill_Id"] == ""
+
+
+def test_esco_mapping_preserves_extraction_details():
+    extracted_skills = [
+        {
+            "skill": "Python",
+            "source_sections": ["skills"],
+            "occurrences": [
+                {
+                    "section": "skills",
+                    "text": "Python",
+                    "start": 0,
+                    "end": 6,
+                }
+            ],
+        }
+    ]
+
+    mapped = map_skills_to_esco(extracted_skills)
+
+    assert mapped[0]["source_sections"] == ["skills"]
+    assert mapped[0]["occurrences"] == extracted_skills[0]["occurrences"]
+
+
+def test_cosine_similarity():
+    similarity = cosine_similarity(
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    )
+
+    assert abs(similarity - 1.0) < 1e-9
+
+
+def test_cosine_similarity_rejects_mismatched_dimensions():
+    with pytest.raises(ValueError, match="equal dimensions"):
+        cosine_similarity([1.0, 0.0], [1.0])
+
+
+def test_generate_skill_embeddings():
+    result = generate_skill_embeddings(["Python", "Machine Learning"])
+
+    assert result["model_name"] == "sentence-transformers/all-MiniLM-L6-v2"
+    assert result["embedding_dimension"] == 384
+    assert len(result["skills"]) == 2
+
+    for item in result["skills"]:
+        assert len(item["embedding"]) == 384
+        assert all(isinstance(value, float) for value in item["embedding"])
+
+
+def test_generate_skill_embeddings_removes_duplicates():
+    result = generate_skill_embeddings(
+        ["Python", "Python", "Machine Learning"]
+    )
+
+    names = [item["skill"] for item in result["skills"]]
+
+    assert names == ["Python", "Machine Learning"]
+
+
+def test_generate_skill_embeddings_empty_input():
+    result = generate_skill_embeddings([])
+
+    assert result["skills"] == []
+    assert result["embedding_dimension"] == 384
