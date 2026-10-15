@@ -19,6 +19,22 @@
     {
       "id": "SK005",
       "name": "Scikit-learn"
+    },
+    {
+      "id": "SK006",
+      "name": "SQL"
+    },
+    {
+      "id": "SK007",
+      "name": "Git"
+    },
+    {
+      "id": "SK008",
+      "name": "REST APIs"
+    },
+    {
+      "id": "SK009",
+      "name": "Data Analysis"
     }
   ],
   "relationships": [

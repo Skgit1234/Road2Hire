@@ -26,6 +26,11 @@ def test_load_skill_vocabulary():
     assert "Pandas" in vocabulary
     assert "Scikit-learn" in vocabulary
 
+    assert "SQL" in vocabulary
+    assert "Git" in vocabulary
+    assert "REST APIs" in vocabulary
+    assert "Data Analysis" in vocabulary
+
 
 def test_normalize_skill_aliases():
     assert normalize_skill_name("python") == "Python"
@@ -191,3 +196,40 @@ def test_generate_skill_embeddings_empty_input():
 
     assert result["skills"] == []
     assert result["embedding_dimension"] == 384
+
+
+def test_extract_additional_skills():
+    resume_data = {
+        "source_file": "test_resume.pdf",
+        "sections": {
+            "skills": "SQL, Git, REST APIs, Data Analysis"
+        },
+    }
+
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {
+        "SQL",
+        "Git",
+        "REST APIs",
+        "Data Analysis",
+    }
+    assert result["skill_count"] == 4
+
+
+def test_extract_all_skills_from_sample_resume():
+    from AI.Resume_Processing.resume_pipeline import process_resume
+
+    resume_data = process_resume("Tests/AI/sample_resume.pdf")
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {
+        "Python",
+        "SQL",
+        "Git",
+        "REST APIs",
+        "Data Analysis",
+    }
+    assert result["skill_count"] == 5
