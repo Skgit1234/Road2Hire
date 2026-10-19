@@ -11,8 +11,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 RESUME_PATH = PROJECT_ROOT / "Tests" / "AI" / "sample_resume.pdf"
 GRAPH_PATH = PROJECT_ROOT / "AI" / "Knowledge_Graph" / "skill_graph_v1.json"
-OUTPUT_PATH = PROJECT_ROOT / "AI" / "Knowledge_Graph" / "resume_skill_graph.svg"
-RESULT_PATH = PROJECT_ROOT / "AI" / "Knowledge_Graph" / "resume_detected_skills.json"
+OUTPUT_PATH = PROJECT_ROOT / "Tests" / "AI" / "resume_skill_graph.svg"
+RESULT_PATH = PROJECT_ROOT / "Tests" / "AI" / "resume_detected_skills.json"
 
 
 def main():
