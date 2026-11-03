@@ -147,6 +147,7 @@ class ESCOTaxonomy:
         self.skill_groups: dict[str, ESCOSkillGroup] = {}
         self.occupations: dict[str, ESCOOccupation] = {}
         self.occupations_by_label: dict[str, ESCOOccupation] = {}
+        self.occupations_by_alt_label: dict[str, list[ESCOOccupation]] = {}
 
         # Skill-skill relations (original -> related, and incoming)
         self.skill_relations: dict[str, list[dict[str, str]]] = {}
@@ -510,6 +511,13 @@ class ESCOTaxonomy:
             if label:
                 self.occupations_by_label[normalize_skill_label(label)] = occ
 
+            for alt in alts:
+                alt_key = normalize_skill_label(alt)
+                if alt_key:
+                    if alt_key not in self.occupations_by_alt_label:
+                        self.occupations_by_alt_label[alt_key] = []
+                    self.occupations_by_alt_label[alt_key].append(occ)
+
     def _load_occupation_skill_relations(self) -> None:
         path = self.raw_dir / "occupationSkillRelations_en.csv"
         if not path.is_file():
@@ -628,6 +636,30 @@ class ESCOTaxonomy:
 
         return results
 
+    def find_occupation(
+        self,
+        query: str,
+        match_alt_labels: bool = True,
+    ) -> ESCOOccupation | None:
+        """Find an ESCO occupation matching a URI, preferred label, or alias."""
+        if not isinstance(query, str) or not query.strip():
+            return None
+
+        cleaned = query.strip()
+        if cleaned in self.occupations:
+            return self.occupations[cleaned]
+
+        key = normalize_skill_label(cleaned)
+        if key in self.occupations_by_label:
+            return self.occupations_by_label[key]
+
+        if match_alt_labels and key in self.occupations_by_alt_label:
+            matches = self.occupations_by_alt_label[key]
+            if matches:
+                return matches[0]
+
+        return None
+
     def get_vocabulary(self, include_alt_labels: bool = False) -> list[str]:
         """Return the complete available ESCO skill vocabulary list."""
         labels = [skill.preferred_label for skill in self.skills.values()]
@@ -697,7 +729,7 @@ class ESCOTaxonomy:
         cleaned = occupation_uri_or_label.strip()
         occ_uri = cleaned
         if cleaned not in self.occupations:
-            occ = self.occupations_by_label.get(normalize_skill_label(cleaned))
+            occ = self.find_occupation(cleaned)
             if occ:
                 occ_uri = occ.concept_uri
             else:
