@@ -1,8 +1,8 @@
 """Extract skills from processed Road2Hire resume data."""
 
 import json
-import re
 from pathlib import Path
+import re
 from typing import Any
 
 
@@ -75,6 +75,17 @@ def load_skill_vocabulary(
         and isinstance(item.get("name"), str)
         and item["name"].strip()
     ]
+
+
+def load_esco_skill_vocabulary(
+    taxonomy: Any = None,
+    include_alt_labels: bool = False,
+) -> list[str]:
+    """Load the complete ESCO skill vocabulary (13,939 unique skills)."""
+    from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
+
+    tax = taxonomy if taxonomy is not None else get_esco_taxonomy()
+    return tax.get_vocabulary(include_alt_labels=include_alt_labels)
 
 
 def _find_skill_occurrences(
