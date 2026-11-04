@@ -171,6 +171,57 @@ class Road2HireModel:
             "errors": pipeline_errors,
         }
 
+    def detect_skill_gap(
+        self,
+        resume_or_profile: str | Path | dict[str, Any],
+        target_occupation: str,
+        essential_weight: float = 0.75,
+        optional_weight: float = 0.25,
+    ) -> dict[str, Any]:
+        """Detect skill gaps between a candidate and a target ESCO occupation.
+
+        Parameters
+        ----------
+        resume_or_profile:
+            Either a path to a resume PDF, a prediction dictionary from
+            ``model.predict()``, or a ``CandidateProfile`` dictionary.
+        target_occupation:
+            ESCO occupation concept URI, preferred label, or alternative label.
+        essential_weight:
+            Weight for essential skills (default 0.75).
+        optional_weight:
+            Weight for optional skills (default 0.25).
+
+        Returns
+        -------
+        SkillGapReport dictionary.
+        """
+        from AI.Skill_Gap.skill_gap_detector import SkillGapDetector
+
+        candidate_profile: dict[str, Any]
+        if isinstance(resume_or_profile, (str, Path)):
+            p = Path(resume_or_profile)
+            if p.suffix.casefold() == ".pdf" and p.exists():
+                pred = self.predict(p)
+                candidate_profile = pred["candidate_profile"]
+            else:
+                candidate_profile = {"skills": []}
+        elif isinstance(resume_or_profile, dict):
+            if "candidate_profile" in resume_or_profile:
+                candidate_profile = resume_or_profile["candidate_profile"]
+            else:
+                candidate_profile = resume_or_profile
+        else:
+            candidate_profile = {"skills": []}
+
+        detector = SkillGapDetector(
+            graph=self._graph,
+            taxonomy=self._taxonomy,
+            essential_weight=essential_weight,
+            optional_weight=optional_weight,
+        )
+        return detector.detect_gap(candidate_profile, target_occupation)
+
     # ------------------------------------------------------------------
     # Private pipeline steps
     # ------------------------------------------------------------------

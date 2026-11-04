@@ -223,3 +223,4 @@ Docs/*
 
 # Excluded dumps
 project_inventory.txt
+!Docs/M3_Hybrid_Skill_Gap_Detection.md
