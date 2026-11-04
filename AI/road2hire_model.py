@@ -222,6 +222,54 @@ class Road2HireModel:
         )
         return detector.detect_gap(candidate_profile, target_occupation)
 
+    def build_personalized_graph(
+        self,
+        resume_or_profile: str | Path | dict[str, Any],
+        target_occupation: str,
+        gap_report: dict[str, Any] | None = None,
+    ) -> Any:
+        """Construct a personalized knowledge graph for a candidate and target occupation.
+
+        Parameters
+        ----------
+        resume_or_profile:
+            Either a path to a resume PDF, a prediction dictionary from
+            ``model.predict()``, or a ``CandidateProfile`` dictionary.
+        target_occupation:
+            ESCO occupation concept URI, preferred label, or alternative label.
+        gap_report:
+            Optional pre-computed skill gap report. If None, it is automatically computed.
+
+        Returns
+        -------
+        PersonalizedKnowledgeGraph instance.
+        """
+        from AI.Knowledge_Graph.personalized_graph import PersonalizedKnowledgeGraph
+
+        candidate_profile: dict[str, Any]
+        if isinstance(resume_or_profile, (str, Path)):
+            p = Path(resume_or_profile)
+            if p.suffix.casefold() == ".pdf" and p.exists():
+                pred = self.predict(p)
+                candidate_profile = pred["candidate_profile"]
+            else:
+                candidate_profile = {"skills": []}
+        elif isinstance(resume_or_profile, dict):
+            if "candidate_profile" in resume_or_profile:
+                candidate_profile = resume_or_profile["candidate_profile"]
+            else:
+                candidate_profile = resume_or_profile
+        else:
+            candidate_profile = {"skills": []}
+
+        return PersonalizedKnowledgeGraph(
+            candidate=candidate_profile,
+            target_occupation=target_occupation,
+            esco_graph=self._graph,
+            taxonomy=self._taxonomy,
+            gap_report=gap_report,
+        )
+
     # ------------------------------------------------------------------
     # Private pipeline steps
     # ------------------------------------------------------------------
