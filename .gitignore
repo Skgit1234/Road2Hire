@@ -218,3 +218,8 @@ Docs/*
 !Docs/Skill_Taxonomy_Strategy.md
 !Docs/ESCO_ONET_Mapping_Strategy.md
 !Docs/Annotation_Strategy.md
+
+!Docs/Phase_4_Candidate_Profile_Enhancement.md
+
+# Excluded dumps
+project_inventory.txt

@@ -288,7 +288,7 @@ class TestCandidateProfileIntegration(unittest.TestCase):
         self.assertSetEqual(missing, set(), msg=f"Missing profile keys: {missing}")
 
     def test_schema_version(self):
-        self.assertEqual(self.profile["schema_version"], "1.0.0")
+        self.assertEqual(self.profile["schema_version"], "1.1.0")
 
     def test_skills_is_list(self):
         self.assertIsInstance(self.profile["skills"], list)

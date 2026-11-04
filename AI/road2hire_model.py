@@ -346,6 +346,8 @@ class Road2HireModel:
         9-skill vocabulary used by the legacy ``build_candidate_profile``.
         The returned structure is validated by ``validate_candidate_profile``.
         """
+        from AI.Candidate_Profile.profile_builder import assemble_candidate_profile
+
         # Build a lookup: (esco preferred label or raw name).casefold() → embedding
         embedding_lookup: dict[str, list[float]] = {
             item["skill"].casefold(): item["embedding"]
@@ -365,49 +367,12 @@ class Road2HireModel:
                 }
             )
 
-        sections = resume_data.get("sections", {})
-
-        return {
-            "schema_version": "1.0.0",
-            "source_file": resume_data.get("source_file"),
-            "candidate": {
-                "raw_contact_information": sections.get("contact_information", ""),
-                "raw_summary": sections.get("summary", ""),
-            },
-            "skills": profile_skills,
-            "education": (
-                [{"raw_text": sections["education"]}]
-                if sections.get("education")
-                else []
-            ),
-            "experience": (
-                [{"raw_text": sections["experience"]}]
-                if sections.get("experience")
-                else []
-            ),
-            "projects": (
-                [{"raw_text": sections["projects"]}]
-                if sections.get("projects")
-                else []
-            ),
-            "certifications": (
-                [{"raw_text": sections["certifications"]}]
-                if sections.get("certifications")
-                else []
-            ),
-            "metadata": {
-                "page_count": resume_data.get("page_count", 0),
-                "extraction_status": resume_data.get("extraction_status"),
-                "section_count": resume_data.get("section_count", 0),
-                "detected_headings": resume_data.get("detected_headings", []),
-                "skill_count": len(profile_skills),
-                "embedding_model": embedding_data.get("model_name", ""),
-                "embedding_dimension": embedding_data.get("embedding_dimension", 384),
-                "sections_available": list(sections.keys()),
-                "section_content_is_raw": True,
-                "pipeline_version": PIPELINE_VERSION,
-            },
-        }
+        return assemble_candidate_profile(
+            resume_data=resume_data,
+            profile_skills=profile_skills,
+            embedding_data=embedding_data,
+            pipeline_version=PIPELINE_VERSION,
+        )
 
 
 # ---------------------------------------------------------------------------
