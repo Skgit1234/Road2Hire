@@ -223,5 +223,8 @@ Docs/*
 
 # Excluded dumps
 project_inventory.txt
+Datasets/*.json
+Datasets/*.jsonl
+Datasets/*.xlsx
 !Docs/M3_Hybrid_Skill_Gap_Detection.md
 !Docs/M3_Personalized_Knowledge_Graph.md

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
@@ -21,7 +21,9 @@ from AI.Candidate_Profile.profile_schema import CandidateProfile
 from AI.Knowledge_Graph.esco_graph import ESCOKnowledgeGraph, get_esco_graph
 from AI.Skill_Extraction.esco_taxonomy import ESCOTaxonomy, get_esco_taxonomy
 from AI.Skill_Gap.gap_schema import SkillGapReport
-from AI.Skill_Gap.skill_gap_detector import SkillGapDetector, get_skill_gap_detector
+
+if TYPE_CHECKING:
+    from AI.Skill_Gap.skill_gap_detector import SkillGapDetector
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +60,11 @@ class PersonalizedKnowledgeGraph:
         self.target_occupation_input = target_occupation
         self.taxonomy = taxonomy if taxonomy is not None else get_esco_taxonomy()
         self.esco_graph = esco_graph if esco_graph is not None else get_esco_graph(self.taxonomy)
-        self.detector = detector if detector is not None else get_skill_gap_detector()
+        if detector is not None:
+            self.detector = detector
+        else:
+            from AI.Skill_Gap.skill_gap_detector import get_skill_gap_detector
+            self.detector = get_skill_gap_detector()
 
         # Compute or reuse skill gap report
         if gap_report is not None:
