@@ -9,6 +9,7 @@ from jose import jwt, JWTError
 from Core.database import get_db
 from Core.security import SECRET_KEY, ALGORITHM
 from Models.user import User
+from Models.candidate_profile import CandidateProfile
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 bearer = HTTPBearer()

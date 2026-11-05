@@ -11,6 +11,7 @@ from Core.database import get_db
 from Models.resume import Resume
 from Models.user import User
 from Schemas.resume import ResumeUploadResponse
+from Models.candidate_profile import CandidateProfile
 from Services.file_service import (
     get_resume_file_path,
     remove_resume_file,
