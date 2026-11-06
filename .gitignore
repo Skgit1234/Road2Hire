@@ -228,3 +228,7 @@ Datasets/*.jsonl
 Datasets/*.xlsx
 !Docs/M3_Hybrid_Skill_Gap_Detection.md
 !Docs/M3_Personalized_Knowledge_Graph.md
+
+# Pipeline Outputs & Candidate Reports
+Outputs/
+
