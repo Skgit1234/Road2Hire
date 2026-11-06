@@ -64,11 +64,26 @@ class Road2HireModel:
 
         self._graph = get_esco_graph(taxonomy=self._taxonomy)
 
-        # Vocabulary is built lazily on the first predict call; subsequent
-        # calls reuse the cached list (~13,939 preferred + alt labels).
-        self._esco_vocab: list[str] | None = None
+        # Vocabulary is initialised eagerly with preferred and alternative labels
+        # (99,676 unique skill terms).
+        logger.info("Road2HireModel: loading ESCO skill vocabulary …")
+        from AI.Skill_Extraction.skill_extractor import load_esco_skill_vocabulary
+
+        self._esco_vocab: list[str] = load_esco_skill_vocabulary(
+            taxonomy=self._taxonomy,
+            include_alt_labels=True,
+        )
+        if not self._esco_vocab:
+            raise RuntimeError(
+                "Failed to load ESCO skill vocabulary: vocabulary is empty or missing."
+            )
 
         logger.info("Road2HireModel: initialisation complete.")
+
+    @property
+    def esco_vocab(self) -> list[str]:
+        """Return the loaded ESCO skill vocabulary list."""
+        return self._esco_vocab
 
     # ------------------------------------------------------------------
     # Public interface
@@ -300,16 +315,15 @@ class Road2HireModel:
         """Match vocabulary terms against resume sections.
 
         Uses the full ESCO preferred + alternative label vocabulary
-        (~13,939 concepts).  The vocabulary is built once and cached.
+        (99,676 unique skill terms).  The vocabulary is built once and cached.
         """
         from AI.Skill_Extraction.skill_extractor import (
             extract_skills,
             load_esco_skill_vocabulary,
         )
 
-        if self._esco_vocab is None:
-            # Include alternative labels so e.g. "Python" resolves to
-            # "Python (computer programming)" via its ESCO alt-label.
+        if not self._esco_vocab:
+            # Fallback if somehow reset
             self._esco_vocab = load_esco_skill_vocabulary(
                 taxonomy=self._taxonomy,
                 include_alt_labels=True,

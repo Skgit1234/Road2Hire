@@ -155,6 +155,16 @@ class TestModelInitialisation(unittest.TestCase):
         model = Road2HireModel()
         self.assertIsNotNone(model._graph)
 
+    def test_model_has_esco_vocab(self):
+        """The model eagerly exposes a loaded ESCO vocabulary after init."""
+        from AI.road2hire_model import Road2HireModel
+
+        model = Road2HireModel()
+        self.assertIsNotNone(model._esco_vocab)
+        self.assertIsInstance(model._esco_vocab, list)
+        self.assertGreater(len(model._esco_vocab), 13000)
+        self.assertEqual(model.esco_vocab, model._esco_vocab)
+
     def test_pipeline_version_constant(self):
         """PIPELINE_VERSION is set to 3.0.0."""
         from AI.road2hire_model import PIPELINE_VERSION
@@ -472,6 +482,102 @@ class TestEmptyTextHandling(unittest.TestCase):
         self.assertIn(result["status"], {"warning", "error"})
         self.assertIsInstance(result["warnings"], list)
         self.assertGreater(len(result["warnings"]), 0)
+
+
+class TestRealPipelineEndToEnd(unittest.TestCase):
+    """End-to-end integration tests without mocking on the actual sample resume PDF."""
+
+    @classmethod
+    def setUpClass(cls):
+        from AI.road2hire_model import get_road2hire_model
+        cls.model = get_road2hire_model()
+        cls.result = cls.model.predict(SAMPLE_PDF)
+
+    def test_predict_real_sample_resume_success(self):
+        """predict() runs successfully on the real sample PDF."""
+        self.assertIn(self.result["status"], {"success", "warning"})
+        self.assertEqual(self.result["page_count"], 1)
+        self.assertEqual(self.result["extraction_status"], "success")
+        self.assertEqual(len(self.result["errors"]), 0)
+
+    def test_predict_real_sample_resume_extracted_and_mapped_skills(self):
+        """Extracted skills are found and normalized to ESCO concepts."""
+        self.assertGreater(self.result["skill_count"], 0)
+        extracted_names = {s["skill"].casefold() for s in self.result["extracted_skills"]}
+        self.assertIn("python", extracted_names)
+        self.assertIn("sql", extracted_names)
+
+        # ESCO mappings must have concept URIs
+        mapped = self.result["esco_mappings"]
+        self.assertEqual(len(mapped), self.result["skill_count"])
+        mapped_uris = [m.get("ESCO_Skill_Id") for m in mapped if m.get("ESCO_Skill_Id")]
+        self.assertGreater(len(mapped_uris), 0)
+
+    def test_predict_real_sample_resume_occupation_matching(self):
+        """Occupation matching yields ranked occupations with valid labels and scores."""
+        occupations = self.result["occupation_matches"]
+        self.assertIsInstance(occupations, list)
+        self.assertGreater(len(occupations), 0)
+        top = occupations[0]
+        self.assertIn("occupation_label", top)
+        self.assertIn("occupation_uri", top)
+        self.assertGreater(top["score"], 0)
+
+    def test_predict_real_sample_resume_candidate_profile(self):
+        """Candidate profile validates against schema with zero critical validation errors."""
+        profile = self.result["candidate_profile"]
+        self.assertIsInstance(profile, dict)
+        self.assertEqual(profile.get("schema_version"), "1.1.0")
+        self.assertEqual(len(self.result["profile_validation_errors"]), 0)
+
+    def test_m3_skill_gap_integration_from_predict(self):
+        """M3 detect_skill_gap() functions cleanly from predict() output."""
+        gap_report = self.model.detect_skill_gap(self.result, "data engineer")
+        self.assertIn("overall_skill_coverage_score", gap_report)
+        self.assertIsInstance(gap_report["overall_skill_coverage_score"], (int, float))
+        self.assertGreaterEqual(gap_report["overall_skill_coverage_score"], 0.0)
+        self.assertLessEqual(gap_report["overall_skill_coverage_score"], 1.0)
+        self.assertIn("matched_skills", gap_report)
+        self.assertIn("missing_essential_skills", gap_report)
+
+    def test_m3_personalized_graph_integration_from_predict(self):
+        """M3 build_personalized_graph() constructs an annotated graph from predict() output."""
+        pg = self.model.build_personalized_graph(self.result, "data engineer")
+        self.assertIsNotNone(pg)
+        self.assertGreater(pg.graph.number_of_nodes(), 0)
+        self.assertGreater(pg.graph.number_of_edges(), 0)
+        summary = pg.get_summary()
+        self.assertIn("total_nodes", summary)
+        self.assertIn("total_edges", summary)
+
+    def test_m4_readiness_inference_and_shap_compatibility(self):
+        """M4 Career Readiness Model and SHAP Explainer process resume profile evidence."""
+        from AI.Readiness_Model import ReadinessModelExplainer
+        from AI.Readiness_Model.model_trainer import load_persisted_model
+
+        pipe, meta = load_persisted_model()
+        self.assertIsNotNone(pipe)
+
+        # Build evidence dictionary from extracted sections
+        sections = self.result["sections"]
+        candidate_evidence = {
+            "skills_text": sections.get("skills", ""),
+            "experience_text": sections.get("experience", ""),
+            "projects_text": sections.get("projects", ""),
+            "education_text": sections.get("education", ""),
+        }
+
+        # Predict readiness
+        pred_class = pipe.predict([candidate_evidence])[0]
+        self.assertIn(pred_class, ["Developing", "Job Ready", "Not Ready"])
+
+        # Explain readiness via SHAP
+        explainer = ReadinessModelExplainer()
+        explanation = explainer.explain_instance(candidate_evidence)
+        self.assertEqual(explanation["predicted_class"], pred_class)
+        self.assertIn("top_positive_factors", explanation["explanation"])
+        self.assertIn("top_negative_factors", explanation["explanation"])
+        self.assertIn("human_readable_summary", explanation["explanation"])
 
 
 if __name__ == "__main__":
