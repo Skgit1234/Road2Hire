@@ -228,6 +228,13 @@ Datasets/*.jsonl
 Datasets/*.xlsx
 !Docs/M3_Hybrid_Skill_Gap_Detection.md
 !Docs/M3_Personalized_Knowledge_Graph.md
+!Docs/External_Resume_Job_Dataset_Integration.md
+
+# External and Large Processed Datasets
+Datasets/External/
+Datasets/Processed/External_Job_Resume_Matching/*.jsonl
+Datasets/Processed/External_Job_Resume_Matching/*.json
+Datasets/Processed/*.xlsx
 
 # Pipeline Outputs & Candidate Reports
 Outputs/

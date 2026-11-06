@@ -17,6 +17,30 @@ from AI.Dataset_Preparation.build_unified_dataset import (
     UnifiedDatasetBuilder,
     load_onet_supplementary_data,
 )
+from AI.Dataset_Preparation.external_candidate_adapter import (
+    adapt_external_cv_to_candidate_profile,
+)
+from AI.Dataset_Preparation.external_compatibility_benchmark import (
+    BenchmarkMetrics,
+    ExternalCompatibilityBenchmark,
+    compute_correlation_metrics,
+)
+from AI.Dataset_Preparation.external_dataset_loader import (
+    load_external_cvs_records,
+    load_external_jobs_records,
+    load_external_matches_records,
+    safe_parse_json_list,
+    stream_external_cvs,
+    stream_external_jobs,
+    stream_external_matches,
+)
+from AI.Dataset_Preparation.external_dataset_validator import (
+    ExternalDatasetValidator,
+    ValidationReport,
+)
+from AI.Dataset_Preparation.external_occupation_adapter import (
+    adapt_external_job_to_occupation,
+)
 from AI.Dataset_Preparation.dataset_inventory import (
     get_dataset_inventory,
     get_datasets_dir,
@@ -84,5 +108,20 @@ __all__ = [
     "UnifiedDatasetBuilder",
     "RoleOccupationResolver",
     "load_onet_supplementary_data",
+    # External Dataset Integration
+    "stream_external_cvs",
+    "stream_external_jobs",
+    "stream_external_matches",
+    "load_external_cvs_records",
+    "load_external_jobs_records",
+    "load_external_matches_records",
+    "safe_parse_json_list",
+    "adapt_external_cv_to_candidate_profile",
+    "adapt_external_job_to_occupation",
+    "ExternalDatasetValidator",
+    "ValidationReport",
+    "ExternalCompatibilityBenchmark",
+    "compute_correlation_metrics",
+    "BenchmarkMetrics",
 ]
 
