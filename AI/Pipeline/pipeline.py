@@ -400,6 +400,7 @@ class Road2HirePipeline:
 
             # Extract numeric feature values for transparency
             from AI.Readiness_Model.feature_extractor import get_feature_names
+            from AI.Readiness_Model.ood_detector import get_default_ood_detector
 
             extractor = pipeline.named_steps["extractor"]
             feat_matrix = extractor.transform([evidence])
@@ -409,8 +410,18 @@ class Road2HirePipeline:
                 for name, val in zip(feat_names, feat_matrix[0])
             }
 
+            # Out-of-Distribution (OOD) Detection
+            ood_detector = get_default_ood_detector()
+            ood_result = ood_detector.detect(feat_values)
+            if ood_result.is_ood:
+                for ood_w in ood_result.ood_warnings:
+                    warnings.append(f"M4 OOD Notice: {ood_w}")
+
             model_type = type(pipeline.named_steps["classifier"]).__name__
-            version = (self._readiness_metadata or {}).get("model_version", "0.1.0-exploratory")
+            meta = self._readiness_metadata or {}
+            version = meta.get("model_version", "0.1.0-exploratory")
+            sample_count = int(meta.get("training_sample_count", 71))
+            class_dist = meta.get("class_distribution", {"Developing": 52, "Job Ready": 16, "Not Ready": 3})
 
             return ReadinessPredictionData(
                 predicted_class=pred_class,
@@ -419,10 +430,15 @@ class Road2HirePipeline:
                 model_type=model_type,
                 feature_values=feat_values,
                 is_experimental=True,
+                is_ood=ood_result.is_ood,
+                ood_warnings=ood_result.ood_warnings,
+                training_sample_count=sample_count,
+                training_class_distribution=class_dist,
+                feature_diagnostics=ood_result.feature_diagnostics,
                 limitations=[
                     "Exploratory supervised model trained on an annotated pilot dataset (N=71).",
                     "Predictions reflect profile depth and structural signals; they do not certify real-world competence.",
-                    "Class probabilities are heuristic estimates from regularized multinomial logistic regression.",
+                    "Class probabilities are heuristic estimates from regularized multinomial logistic regression and are not fully calibrated.",
                 ],
             )
         except Exception as exc:

@@ -239,12 +239,24 @@ class ReportGenerator:
                 is_pred = " **(Predicted)**" if cls_name == readiness.predicted_class else ""
                 lines.append(f"| **{cls_name}** | **`{prob*100:.2f}%`** | {is_pred} |")
 
+            if getattr(readiness, "is_ood", False) and readiness.ood_warnings:
+                lines.extend([
+                    "",
+                    "> [!WARNING]",
+                    "> **Out-of-Distribution (OOD) Warning:**  ",
+                    "> The candidate's evidence profile contains feature values outside observed training bounds:",
+                ])
+                for w in readiness.ood_warnings:
+                    lines.append(f"> - {w}")
+                lines.append("> Probability estimates reflect regularized model extrapolations and must not be taken as certified competence.")
+
             lines.extend([
                 "",
                 "> [!NOTE]",
                 "> Career readiness evaluates whether the candidate demonstrates foundational competencies, "
                 "> tenure, and practical project depth expected of industry candidates. "
-                "> It is distinct from skill coverage or candidate-job requisition matching.",
+                "> It is distinct from skill coverage or candidate-job requisition matching. "
+                "> Probabilities are heuristic model estimates, not certified real-world guarantees.",
                 "",
             ])
         else:

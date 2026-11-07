@@ -94,11 +94,44 @@ Repeated Stratified 3-Fold Cross-Validation (3 folds × 5 repeats = 15 iteration
 
 Saved in `AI/Readiness_Model/saved_models/`:
 - `readiness_classifier_pipeline.joblib`: Trained scikit-learn Pipeline on all 71 labeled records.
-- `model_metadata.json`: Machine-readable metadata (version, target classes, feature names, cross-validation metrics, timestamp, seed, known limitations). Zero candidate PII.
+- `model_metadata.json`: Machine-readable metadata (version, target classes, feature names, empirical feature distribution statistics, cross-validation metrics, timestamp, seed, known limitations). Zero candidate PII.
 
 ---
 
-## 5. M4.5 SHAP Explainability Interface
+## 5. Out-of-Distribution (OOD) Detection
+
+Candidate profiles derived from unconstrained resumes may present feature values significantly outside the range observed in the $N=71$ training cohort. To protect against unmonitored model extrapolation, the `ReadinessOODDetector` flags anomalies based on empirical bounds and standard deviations ($|z| > 3.0$):
+
+```python
+from AI.Readiness_Model import ReadinessOODDetector, load_persisted_model
+
+pipeline, metadata = load_persisted_model()
+detector = ReadinessOODDetector.from_metadata(metadata)
+
+# Evaluate candidate features
+result = detector.detect_from_features(candidate_features_dict)
+if result.is_ood:
+    print(f"OOD Warnings: {result.warnings}")
+    print(f"Feature-level diagnostics: {result.feature_diagnostics}")
+```
+
+### Empirical Feature Distribution ($N=71$)
+
+| Feature | Min | Max | Mean | Std | P25 | Median | P75 | IQR | Bounds |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|
+| `skills_count` | 0.0 | 14.0 | 6.94 | 3.32 | 5.0 | 7.0 | 9.0 | 4.0 | $[0.0, 14.0]$ |
+| `exp_positions_count` | 0.0 | 4.0 | 1.34 | 1.08 | 1.0 | 1.0 | 2.0 | 1.0 | $[0.0, 4.0]$ |
+| `has_senior_role` | 0.0 | 1.0 | 0.17 | 0.38 | 0.0 | 0.0 | 0.0 | 0.0 | $\{0, 1\}$ |
+| `project_count` | 0.0 | 5.0 | 2.37 | 1.09 | 2.0 | 2.0 | 3.0 | 1.0 | $[0.0, 5.0]$ |
+| `project_words` | 0.0 | 258.0 | 94.32 | 48.74 | 60.0 | 88.0 | 125.0 | 65.0 | $[0.0, 258.0]$ |
+| `project_tech_count` | 0.0 | 16.0 | 5.66 | 3.44 | 3.0 | 5.0 | 8.0 | 5.0 | $[0.0, 16.0]$ |
+| `has_production_system`| 0.0 | 1.0 | 0.44 | 0.50 | 0.0 | 0.0 | 1.0 | 1.0 | $\{0, 1\}$ |
+| `edu_level_ordinal` | 1.0 | 2.0 | 1.25 | 0.44 | 1.0 | 1.0 | 1.5 | 0.5 | $[1.0, 2.0]$ |
+| `is_stem_degree` | 0.0 | 1.0 | 0.86 | 0.35 | 1.0 | 1.0 | 1.0 | 0.0 | $\{0, 1\}$ |
+
+---
+
+## 6. M4.5 SHAP Explainability Interface
 
 Milestone M4.5 introduces native SHAP-based local and global model explainability via `ReadinessModelExplainer`.
 

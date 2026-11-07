@@ -101,6 +101,11 @@ class ReadinessPredictionData:
     model_type: str
     feature_values: dict[str, float]
     is_experimental: bool = True
+    is_ood: bool = False
+    ood_warnings: list[str] = field(default_factory=list)
+    training_sample_count: int = 71
+    training_class_distribution: dict[str, int] = field(default_factory=dict)
+    feature_diagnostics: dict[str, Any] = field(default_factory=dict)
     limitations: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

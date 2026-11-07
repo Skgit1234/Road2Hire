@@ -240,6 +240,8 @@ def print_summary(result: UnifiedPipelineResult) -> None:
     if readiness:
         prob = readiness.class_probabilities.get(readiness.predicted_class, 0.0)
         print(f" Readiness Class:     {readiness.predicted_class} ({prob*100:.1f}% model probability)")
+        if getattr(readiness, "is_ood", False):
+            print(f" Readiness Caution:   Feature values outside training bounds ({len(readiness.ood_warnings)} warning(s))")
 
     if shap_exp:
         top_pos = [f.get("display_name", f.get("feature")) for f in shap_exp.top_positive_factors[:2]]

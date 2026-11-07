@@ -26,7 +26,7 @@
     "is_stem_degree"
   ],
   "random_seed": 42,
-  "trained_at_utc": "2026-11-05T16:48:33.215388+00:00",
+  "trained_at_utc": "2026-11-07T06:57:34.953152+00:00",
   "cross_validation_metrics": {
     "macro_f1_mean": 0.48137180126563756,
     "macro_f1_std": 0.14428002053925756,
@@ -62,10 +62,94 @@
       }
     }
   },
+  "training_feature_statistics": {
+    "skills_count": {
+      "min": 0.0,
+      "max": 14.0,
+      "mean": 6.9437,
+      "std": 4.0347,
+      "q25": 4.0,
+      "q75": 10.0,
+      "iqr": 6.0
+    },
+    "exp_positions_count": {
+      "min": 1.0,
+      "max": 3.0,
+      "mean": 1.3662,
+      "std": 0.5627,
+      "q25": 1.0,
+      "q75": 2.0,
+      "iqr": 1.0
+    },
+    "has_senior_role": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.0986,
+      "std": 0.2981,
+      "q25": 0.0,
+      "q75": 0.0,
+      "iqr": 0.0
+    },
+    "project_count": {
+      "min": 0.0,
+      "max": 3.0,
+      "mean": 1.5775,
+      "std": 1.1946,
+      "q25": 0.5,
+      "q75": 3.0,
+      "iqr": 2.5
+    },
+    "project_words": {
+      "min": 0.0,
+      "max": 88.0,
+      "mean": 34.3803,
+      "std": 27.9952,
+      "q25": 2.5,
+      "q75": 57.5,
+      "iqr": 55.0
+    },
+    "project_tech_count": {
+      "min": 0.0,
+      "max": 15.0,
+      "mean": 4.2113,
+      "std": 4.6842,
+      "q25": 1.0,
+      "q75": 6.0,
+      "iqr": 5.0
+    },
+    "has_production_system": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.2394,
+      "std": 0.4267,
+      "q25": 0.0,
+      "q75": 0.0,
+      "iqr": 0.0
+    },
+    "edu_level_ordinal": {
+      "min": 1.0,
+      "max": 2.0,
+      "mean": 1.4366,
+      "std": 0.496,
+      "q25": 1.0,
+      "q75": 2.0,
+      "iqr": 1.0
+    },
+    "is_stem_degree": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.8169,
+      "std": 0.3867,
+      "q25": 1.0,
+      "q75": 1.0,
+      "iqr": 0.0
+    }
+  },
   "known_limitations": [
     "Trained on M4.3 pilot dataset (N=71 labeled records).",
     "Severe minority class imbalance in Not Ready (N=3, 4.2%).",
     "Occupational concentration in Software Developer (60.6%).",
-    "Exploratory baseline only; not certified for autonomous production decisions."
+    "Exploratory baseline only; not certified for autonomous production decisions.",
+    "Class probabilities are heuristic estimates from regularized multinomial logistic regression and are not fully calibrated."
   ]
 }

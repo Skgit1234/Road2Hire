@@ -127,6 +127,15 @@ def train_and_persist_model(
     # Persist pipeline artifact
     joblib.dump(pipeline, model_path)
 
+    # Compute empirical feature statistics for Out-of-Distribution (OOD) detection
+    from .ood_detector import ReadinessOODDetector
+
+    X_feat = pipeline.named_steps["extractor"].transform(X_raw)
+    ood_detector = ReadinessOODDetector.fit_from_feature_matrix(
+        X_feat, get_feature_names(), z_threshold=3.0
+    )
+    feature_stats = ood_detector.get_training_stats()
+
     # Build sanitized metadata without candidate PII
     classes_list = [str(c) for c in pipeline.classes_]
     metadata = {
@@ -143,11 +152,13 @@ def train_and_persist_model(
         "random_seed": random_state,
         "trained_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "cross_validation_metrics": evaluation_metrics or {},
+        "training_feature_statistics": feature_stats,
         "known_limitations": [
             "Trained on M4.3 pilot dataset (N=71 labeled records).",
             "Severe minority class imbalance in Not Ready (N=3, 4.2%).",
             "Occupational concentration in Software Developer (60.6%).",
             "Exploratory baseline only; not certified for autonomous production decisions.",
+            "Class probabilities are heuristic estimates from regularized multinomial logistic regression and are not fully calibrated.",
         ],
     }
 
