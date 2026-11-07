@@ -206,12 +206,17 @@ class RoadmapGenerator:
         ]
 
         total_skills = sum(len(p.items) for p in phases)
+        estimated_weeks = (
+            "0 Weeks (Candidate profile fulfills all target occupation requirements)"
+            if total_skills == 0
+            else "12 – 22 Weeks"
+        )
 
         return LearningRoadmap(
             target_occupation_title=target_occupation_title,
             target_occupation_uri=target_occupation_uri,
             total_roadmap_skills=total_skills,
-            total_estimated_weeks="12 – 22 Weeks",
+            total_estimated_weeks=estimated_weeks,
             phases=phases,
             disclaimers=ROADMAP_DISCLAIMERS,
         )

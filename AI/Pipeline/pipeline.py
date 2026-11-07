@@ -237,6 +237,14 @@ class Road2HirePipeline:
         # -----------------------------------------------------------------
         # Stage 8: Unified Output Construction & File Reporting
         # -----------------------------------------------------------------
+        status = (
+            "error"
+            if errors
+            else "warning"
+            if (warnings or resume_result.get("status") == "warning")
+            else "success"
+        )
+
         result = UnifiedPipelineResult(
             pipeline_version=PIPELINE_VERSION,
             timestamp=datetime.now().isoformat(),
@@ -256,6 +264,7 @@ class Road2HirePipeline:
             execution_timings_seconds=timings,
             warnings=warnings,
             errors=errors,
+            status=status,
         )
 
         try:
@@ -466,6 +475,15 @@ class Road2HirePipeline:
             exp = exp_result["explanation"]
             viz = exp_result["visualization_data"]
 
+            # Load global feature importance if available
+            global_importance: list[dict[str, Any]] = []
+            if hasattr(explainer, "load_global_importance"):
+                try:
+                    global_data = explainer.load_global_importance()
+                    global_importance = global_data.get("overall_feature_importance", [])
+                except Exception as exc:
+                    logger.debug("Could not retrieve global SHAP importance: %s", exc)
+
             return SHAPExplanationData(
                 target_class_explained=exp.get("target_class_explained", ""),
                 base_value=exp.get("base_value", 0.0),
@@ -474,6 +492,7 @@ class Road2HirePipeline:
                 feature_contributions=exp.get("feature_contributions", []),
                 human_readable_summary=exp.get("human_readable_summary", ""),
                 waterfall_steps=viz.get("waterfall_steps", []),
+                global_importance_ranking=global_importance,
                 limitations=exp_result.get("limitations", []),
             )
         except Exception as exc:

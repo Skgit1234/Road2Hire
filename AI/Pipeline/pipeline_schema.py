@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+import json
 from typing import Any, Literal
 
 
@@ -123,6 +124,7 @@ class SHAPExplanationData:
     feature_contributions: list[dict[str, Any]]
     human_readable_summary: str
     waterfall_steps: list[dict[str, Any]]
+    global_importance_ranking: list[dict[str, Any]] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -152,9 +154,11 @@ class UnifiedPipelineResult:
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     report_paths: dict[str, str] = field(default_factory=dict)
+    status: Literal["success", "warning", "error"] = "success"
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "status": self.status,
             "pipeline_version": self.pipeline_version,
             "timestamp": self.timestamp,
             "source_file": self.source_file,
@@ -191,4 +195,8 @@ class UnifiedPipelineResult:
             "errors": self.errors,
             "report_paths": self.report_paths,
         }
+
+    def to_json(self, indent: int = 2) -> str:
+        """Serialize the complete pipeline result to a formatted JSON string."""
+        return json.dumps(self.to_dict(), indent=indent)
 

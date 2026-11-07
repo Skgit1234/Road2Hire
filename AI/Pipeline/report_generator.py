@@ -332,30 +332,38 @@ class ReportGenerator:
         ])
 
         if roadmap:
-            for p in roadmap.phases:
+            if roadmap.total_roadmap_skills == 0:
                 lines.extend([
-                    f"### {p.phase_name} ({p.estimated_weeks})",
-                    "",
-                    f"*{p.description}*",
+                    "*(Candidate profile fulfills all essential and optional skill requirements for this occupation. No missing skills identified.)*",
                     "",
                 ])
-                for idx, it in enumerate(p.items, start=1):
+            else:
+                for p in roadmap.phases:
+                    if not p.items:
+                        continue
                     lines.extend([
-                        f"#### {p.phase_number}.{idx} {it.skill_name} (`{it.priority}` Priority)",
+                        f"### {p.phase_name} ({p.estimated_weeks})",
                         "",
-                        f"- **Rationale:** {it.importance_rationale}",
-                        f"- **Learning Outcome:** {it.learning_outcome}",
-                        f"- **Estimated Duration:** {it.estimated_duration_weeks}",
-                        f"- **Suggested Activities:**",
+                        f"*{p.description}*",
+                        "",
                     ])
-                    for act in it.suggested_activities:
-                        lines.append(f"  - {act}")
-                    lines.append(f"- **Practical Project:** {it.practical_project}")
-                    lines.append(f"- **Completion Criteria:** {it.completion_criteria}")
-                    lines.append(f"- **Recommended Search Resources:**")
-                    for rc in it.resource_categories:
-                        lines.append(f"  - *{rc['category']}:* `{rc['recommended_search']}`")
-                    lines.append("")
+                    for idx, it in enumerate(p.items, start=1):
+                        lines.extend([
+                            f"#### {p.phase_number}.{idx} {it.skill_name} (`{it.priority}` Priority)",
+                            "",
+                            f"- **Rationale:** {it.importance_rationale}",
+                            f"- **Learning Outcome:** {it.learning_outcome}",
+                            f"- **Estimated Duration:** {it.estimated_duration_weeks}",
+                            f"- **Suggested Activities:**",
+                        ])
+                        for act in it.suggested_activities:
+                            lines.append(f"  - {act}")
+                        lines.append(f"- **Practical Project:** {it.practical_project}")
+                        lines.append(f"- **Completion Criteria:** {it.completion_criteria}")
+                        lines.append(f"- **Recommended Search Resources:**")
+                        for rc in it.resource_categories:
+                            lines.append(f"  - *{rc['category']}:* `{rc['recommended_search']}`")
+                        lines.append("")
 
         lines.extend([
             "---",

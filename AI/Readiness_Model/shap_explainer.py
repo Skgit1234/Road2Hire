@@ -460,3 +460,14 @@ class ReadinessModelExplainer:
 
         return json_path, report_path
 
+    def load_global_importance(self) -> dict[str, Any]:
+        """Load the persisted global SHAP importance artifact if available."""
+        artifact_path = SAVED_MODELS_DIR / GLOBAL_SHAP_JSON_NAME
+        if artifact_path.exists():
+            try:
+                with open(artifact_path, encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as exc:
+                logger.warning("Could not load global SHAP artifact: %s", exc)
+        return {}
+
