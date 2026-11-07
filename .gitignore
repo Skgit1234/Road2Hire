@@ -229,6 +229,8 @@ Datasets/*.xlsx
 !Docs/M3_Hybrid_Skill_Gap_Detection.md
 !Docs/M3_Personalized_Knowledge_Graph.md
 !Docs/External_Resume_Job_Dataset_Integration.md
+!Docs/AI_ML_Database_Storage_Specification.md
+!Docs/AI_ML_Database_Field_Mapping.md
 
 # External and Large Processed Datasets
 Datasets/External/

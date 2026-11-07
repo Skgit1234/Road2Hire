@@ -344,3 +344,36 @@ When persisting pipeline outputs in PostgreSQL, the backend service should parti
   "errors": []
 }
 ```
+
+---
+
+## 9. Database Storage Specification & Handover Boundary
+
+To guide backend engineers in storing and retrieving pipeline results in PostgreSQL, the AI/ML team provides two comprehensive companion specifications:
+
+1. **[`Docs/AI_ML_Database_Storage_Specification.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Storage_Specification.md):**
+   - High-level architectural specification covering candidate-to-resume ($1:N$) and resume-to-run ($1:N$) cardinalities.
+   - Complete Mermaid Entity-Relationship Diagram (ERD).
+   - Data lifecycle guidelines: append-only runs, versioning, status tracking, reprocessing idempotency, and retention.
+   - PII privacy boundaries and data governance rules.
+   - Scientific interpretation disclaimers (M3 heuristic scores, M4 uncalibrated probabilities, SHAP attribution boundaries).
+
+2. **[`Docs/AI_ML_Database_Field_Mapping.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Field_Mapping.md):**
+   - Exhaustive field-level mapping table for all 10 canonical sections from `pipeline_output.schema.json` to suggested PostgreSQL table columns, data types, nullability, and storage strategies (relational columns vs. indexed JSONB).
+
+### Architectural Handover Boundary
+
+```
+┌───────────────────────────────────────┐         ┌───────────────────────────────────────┐
+│         AI/ML PIPELINE DOMAIN         │         │        BACKEND PLATFORM DOMAIN        │
+├───────────────────────────────────────┤         ├───────────────────────────────────────┤
+│ • Resume PDF Extraction & Parsing     │         │ • HTTP / REST Endpoint Routing (FastAPI)│
+│ • Trie Skill Extraction (ESCO)        │         │ • User Authentication & Authorization │
+│ • Knowledge Graph Occupation Overlap  │ Handover│ • Resume Binary S3/Object Storage     │
+│ • 3-Tier Skill Gap Scoring            │────────>│ • PostgreSQL Persistence & Migrations │
+│ • M4 Readiness & OOD Inference        │ Contract│ • Database Connection Pools & Pooling │
+│ • SHAP Explainability Decomposition   │         │ • Asynchronous Worker Queues (Celery) │
+│ • 4-Phase Learning Roadmap Generation │         │ • WebSocket Progress & UI Streaming   │
+│ • Canonical Schema Dicts (In-Memory)  │         │ • Relational & JSONB Query Indexing   │
+└───────────────────────────────────────┘         └───────────────────────────────────────┘
+```
