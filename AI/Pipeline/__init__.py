@@ -10,6 +10,8 @@ from AI.Pipeline.pipeline import (
     PipelineError,
     ResumeValidationError,
     Road2HirePipeline,
+    get_pipeline,
+    process_resume,
 )
 from AI.Pipeline.pipeline_schema import (
     LearningRoadmap,
@@ -31,6 +33,8 @@ from AI.Pipeline.target_occupation_selector import (
 
 __all__ = [
     "Road2HirePipeline",
+    "get_pipeline",
+    "process_resume",
     "PipelineError",
     "ResumeValidationError",
     "OccupationSelectionError",

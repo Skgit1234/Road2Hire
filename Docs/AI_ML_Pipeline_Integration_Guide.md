@@ -75,49 +75,55 @@ The pipeline executes through a verified 15-step sequence:
 
 ## 3. Python Integration Interface (For Backend Developers)
 
-Backend services (e.g. FastAPI route handlers or background workers) must import and execute the pipeline directly in Python:
+Backend services (e.g. FastAPI route handlers or async background task workers) can import and execute the pipeline directly in Python using either the functional `process_resume(...)` interface or the object-oriented `get_pipeline()` singleton.
+
+### Primary Function: `process_resume(...)`
 
 ```python
 from pathlib import Path
-from AI.Pipeline import Road2HirePipeline, UnifiedPipelineResult
-from AI.Pipeline.target_occupation_selector import OccupationSelectionError
-from AI.Pipeline.pipeline import ResumeValidationError
+from AI.Pipeline import (
+    process_resume,
+    UnifiedPipelineResult,
+    ResumeValidationError,
+    OccupationSelectionError,
+    PipelineError,
+)
 
-# 1. Initialize Pipeline (Singleton model caching ensures instant subsequent runs)
-pipeline = Road2HirePipeline(base_output_dir="Outputs")
-
-# 2. Execute End-to-End Analysis
+# Mode A: Execution with an explicit target occupation
 try:
-    result: UnifiedPipelineResult = pipeline.run(
-        resume_path=Path("uploads/candidate_resume.pdf"),
-        target_occupation="data engineer",  # Optional: title, URI, or None (if interactive)
-        interactive=False,                  # Backend calls MUST set interactive=False
-        output_format="both",               # "both", "json", or "markdown"
+    result: UnifiedPipelineResult = process_resume(
+        resume_path="uploads/candidate_resume.pdf",
+        target_occupation="data engineer",  # title, search string, or ESCO URI
+        output_format="none",               # "none" avoids writing report files to disk
     )
 except ResumeValidationError as e:
-    # 400 Bad Request: File is not a valid PDF or unreadable
+    # 400 Bad Request: missing file, non-PDF, 0-byte corrupt document
     print(f"Invalid resume file: {e}")
 except OccupationSelectionError as e:
-    # 400 Bad Request: Target occupation was missing or could not be resolved
-    print(f"Invalid target occupation: {e}")
-except Exception as e:
-    # 500 Internal Server Error: Unhandled pipeline exception
-    print(f"Pipeline processing failed: {e}")
+    # 422 Unprocessable Entity: target occupation invalid or missing.
+    # e.suggested_occupations contains ranked recommendations to prompt the user
+    print(f"Target occupation error: {e}")
+    for occ in e.suggested_occupations[:5]:
+        print(f" - {occ['occupation_label']} (Score: {occ['score']}, URI: {occ['occupation_uri']})")
 
-# 3. Access Output
-if result.status == "success":
-    print(f"Candidate Name: {result.candidate_profile.get('candidate', {}).get('name')}")
-    print(f"Target Role:    {result.selected_occupation.occupation_label}")
-    print(f"Coverage Score: {result.skill_gap_analysis.get('overall_skill_coverage_score'):.2%}")
-    print(f"Readiness:      {result.readiness_prediction.predicted_class}")
-    
-    # Check Out-of-Distribution Warning
-    if result.readiness_prediction.is_ood:
-        print(f"OOD Notice: {result.readiness_prediction.ood_warnings}")
+# Mode B: Execution with automatic top-occupation resolution
+result_auto = process_resume(
+    resume_path="uploads/candidate_resume.pdf",
+    target_occupation=None,
+    auto_select_top_occupation=True,     # Auto-selects highest-scoring occupation
+    output_format="none",
+)
 
-    # Direct JSON Serialization
-    json_payload = result.to_json(indent=2)
+# Canonical JSON serialization for API responses (conforms to pipeline_output.schema.json)
+api_response: dict = result.to_canonical_dict()
+json_string: str = result.to_json(indent=2)
 ```
+
+### Thread Safety & Resource Lifecycle
+
+- **Thread-Safe Model Singletons:** `get_road2hire_model()` and `get_pipeline()` are protected with re-entrant thread locks (`threading.RLock`). They can be safely accessed concurrently across multi-threaded web worker threads (e.g. `run_in_threadpool` or gunicorn/uvicorn workers).
+- **Zero Redundant Loading:** ESCO taxonomy, knowledge graph, and SentenceTransformer weights are initialized once in memory (~450MB total) and reused across all subsequent requests without reallocation.
+- **Fast In-Memory Execution:** By specifying `output_format="none"`, disk I/O for Markdown and JSON report files is completely bypassed, keeping latency purely dedicated to compute.
 
 ---
 

@@ -24,6 +24,16 @@ class PipelineError(Exception):
 class OccupationSelectionError(PipelineError):
     """Raised when an occupation selection is missing, invalid, or cannot be resolved."""
 
+    def __init__(
+        self,
+        message: str,
+        suggested_occupations: list[dict[str, Any]] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.suggested_occupations: list[dict[str, Any]] = (
+            suggested_occupations if suggested_occupations is not None else []
+        )
+
 
 class TargetOccupationSelector:
     """Selects and resolves canonical ESCO occupations for pipeline execution."""
@@ -37,8 +47,9 @@ class TargetOccupationSelector:
         ranked_matches: list[dict[str, Any]],
         interactive: bool = False,
         top_n: int = 10,
+        auto_select_top: bool = False,
     ) -> SelectedOccupation:
-        """Resolve a target occupation from a query string or interactive user choice.
+        """Resolve a target occupation from a query string, auto-selection, or interactive user choice.
 
         Parameters
         ----------
@@ -50,6 +61,9 @@ class TargetOccupationSelector:
             Whether to prompt user if query is None.
         top_n:
             Number of suggestions to display in interactive mode or error prompts.
+        auto_select_top:
+            If True and query is None, automatically selects the highest-scoring
+            occupation recommendation from ranked_matches without raising an error.
 
         Returns
         -------
@@ -63,13 +77,31 @@ class TargetOccupationSelector:
         """
         # Case 1: An explicit query was passed
         if query and isinstance(query, str) and query.strip():
-            return self._resolve_explicit_query(query.strip(), ranked_matches)
+            return self._resolve_explicit_query(query.strip(), ranked_matches, top_n=top_n)
 
-        # Case 2: Interactive mode requested without query
+        # Case 2: Auto-select top recommendation if requested
+        if auto_select_top:
+            if ranked_matches:
+                top_item = ranked_matches[0]
+                return SelectedOccupation(
+                    occupation_uri=top_item.get("occupation_uri", ""),
+                    occupation_label=top_item.get("occupation_label", ""),
+                    match_score=top_item.get("score", 0),
+                    essential_matched=top_item.get("essential_count", 0),
+                    optional_matched=top_item.get("optional_count", 0),
+                    supporting_skills=top_item.get("supporting_skills", []),
+                    resolution_source="top_recommendation",
+                )
+            raise OccupationSelectionError(
+                "Cannot auto-select top occupation because no occupation recommendations were found for this candidate.",
+                suggested_occupations=[],
+            )
+
+        # Case 3: Interactive mode requested without query
         if interactive:
             return self._prompt_interactive_selection(ranked_matches, top_n=top_n)
 
-        # Case 3: Non-interactive mode without query -> Must NOT default silently!
+        # Case 4: Non-interactive mode without query -> Must NOT default silently!
         top_suggestions = [
             f"  {idx+1}. {m.get('occupation_label', 'Unknown')} (Score: {m.get('score', 0)}, URI: {m.get('occupation_uri')})"
             for idx, m in enumerate(ranked_matches[:top_n])
@@ -78,14 +110,16 @@ class TargetOccupationSelector:
 
         raise OccupationSelectionError(
             "No target occupation specified. In non-interactive mode, an explicit occupation must be provided.\n"
-            "Pass --occupation <title_or_uri> to select one of the top suggestions:\n"
-            f"{suggestions_text}"
+            "Pass --occupation <title_or_uri> or set auto_select_top_occupation=True to select one of the top suggestions:\n"
+            f"{suggestions_text}",
+            suggested_occupations=ranked_matches[:top_n],
         )
 
     def _resolve_explicit_query(
         self,
         query: str,
         ranked_matches: list[dict[str, Any]],
+        top_n: int = 10,
     ) -> SelectedOccupation:
         """Resolve a string query against ranked matches or global ESCO taxonomy."""
         cleaned = query.strip()
@@ -149,7 +183,8 @@ class TargetOccupationSelector:
 
         raise OccupationSelectionError(
             f"Could not resolve target occupation '{query}' to any valid ESCO occupation concept.\n"
-            "Please verify the spelling, use canonical ESCO titles (e.g. 'data engineer'), or pass a valid ESCO URI."
+            "Please verify the spelling, use canonical ESCO titles (e.g. 'data engineer'), or pass a valid ESCO URI.",
+            suggested_occupations=ranked_matches[:top_n],
         )
 
     def _prompt_interactive_selection(

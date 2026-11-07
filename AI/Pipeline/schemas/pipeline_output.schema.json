@@ -230,7 +230,7 @@
         "supporting_skills": { "type": "array", "items": { "type": "string" } },
         "resolution_source": {
           "type": "string",
-          "enum": ["suggestion", "direct_uri", "taxonomy_lookup"]
+          "enum": ["suggestion", "direct_uri", "taxonomy_lookup", "top_recommendation"]
         }
       },
       "required": ["occupation_uri", "occupation_label", "resolution_source"]

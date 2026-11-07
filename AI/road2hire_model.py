@@ -18,6 +18,7 @@ Pipeline version: 3.0.0
 from __future__ import annotations
 
 import logging
+import threading
 import warnings
 from pathlib import Path
 from typing import Any
@@ -493,6 +494,7 @@ class Road2HireModel:
 # ---------------------------------------------------------------------------
 
 _model_singleton: Road2HireModel | None = None
+_model_lock = threading.RLock()
 
 
 def get_road2hire_model(
@@ -501,10 +503,12 @@ def get_road2hire_model(
     """Return a module-level cached ``Road2HireModel`` instance.
 
     Equivalent to constructing ``Road2HireModel()`` once and reusing it.
-    Not thread-safe; intended for single-process, single-thread use.
+    Thread-safe; safe for concurrent use across multiple worker threads.
     """
     global _model_singleton  # noqa: PLW0603
     if _model_singleton is None:
-        _model_singleton = Road2HireModel(top_n_occupations=top_n_occupations)
+        with _model_lock:
+            if _model_singleton is None:
+                _model_singleton = Road2HireModel(top_n_occupations=top_n_occupations)
     return _model_singleton
 

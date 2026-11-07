@@ -41,12 +41,16 @@ class ReportGenerator:
         output_dir:
             Custom directory path or None for default timestamped run folder.
         output_format:
-            'both', 'json', or 'markdown'.
+            'both', 'json', 'markdown', or 'none'.
 
         Returns
         -------
         dict mapping format name ('json', 'markdown') to saved file path.
         """
+        if output_format.casefold() == "none":
+            result.report_paths = {}
+            return {}
+
         target_dir = self._prepare_run_dir(result, output_dir)
         paths: dict[str, str] = {}
 

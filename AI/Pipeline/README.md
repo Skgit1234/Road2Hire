@@ -63,30 +63,86 @@ Resume PDF
 
 ## 3. Programmatic Usage (Python Backend)
 
+Road2Hire provides two primary Python integration entry points:
+1. `process_resume(...)`: High-level convenience function for backend services and background workers.
+2. `Road2HirePipeline.run(...)`: Direct object-oriented pipeline interface.
+
+Both entry points utilize the thread-safe `get_pipeline()` and `get_road2hire_model()` singletons to share heavy in-memory models (ESCO taxonomy, knowledge graph, SentenceTransformer embeddings, M4 readiness classifier, SHAP explainer) across inference requests.
+
+### A. High-Level Python API (`process_resume`)
+
 ```python
 from pathlib import Path
-from AI.Pipeline import Road2HirePipeline, UnifiedPipelineResult
+from AI.Pipeline import process_resume, UnifiedPipelineResult
 
-# Initialize pipeline with cached model singletons
-pipeline = Road2HirePipeline(base_output_dir="Outputs")
-
-# Run analysis
-result: UnifiedPipelineResult = pipeline.run(
-    resume_path=Path("path/to/resume.pdf"),
+# 1. Processing with explicit target occupation
+result: UnifiedPipelineResult = process_resume(
+    resume_path="path/to/resume.pdf",
     target_occupation="data engineer",
-    interactive=False,
-    output_format="both",
+    output_format="none",  # 'none' suppresses file I/O for API speed
 )
 
-# Access typed output
+# 2. Processing with automatic top-occupation resolution
+result_auto = process_resume(
+    resume_path="path/to/resume.pdf",
+    target_occupation=None,
+    auto_select_top_occupation=True,
+    output_format="none",
+)
+
+# Access typed attributes
 print(f"Status:       {result.status}")
 print(f"Candidate:    {result.candidate_profile['candidate']['name']}")
 print(f"Target Role:  {result.selected_occupation.occupation_label}")
 print(f"Readiness:    {result.readiness_prediction.predicted_class}")
 print(f"Is OOD:       {result.readiness_prediction.is_ood}")
 
-# Serialize to JSON
-json_output = result.to_json(indent=2)
+# Serialize to Draft-07 canonical JSON for HTTP responses
+canonical_payload: dict = result.to_canonical_dict()
+json_string: str = result.to_json(indent=2)
+```
+
+### B. Object-Oriented Pipeline API (`Road2HirePipeline`)
+
+```python
+from AI.Pipeline import Road2HirePipeline, get_pipeline
+
+# Obtain shared singleton (thread-safe)
+pipeline: Road2HirePipeline = get_pipeline(base_output_dir="Outputs")
+
+# Run pipeline execution
+result = pipeline.run(
+    resume_path="path/to/resume.pdf",
+    target_occupation="data engineer",
+    interactive=False,
+    output_format="both",
+    auto_select_top_occupation=False,
+)
+```
+
+### C. Exception Handling
+
+```python
+from AI.Pipeline import ResumeValidationError, OccupationSelectionError, PipelineError
+
+try:
+    result = process_resume(
+        resume_path="candidate.pdf",
+        target_occupation=None,
+        auto_select_top_occupation=False,
+    )
+except ResumeValidationError as exc:
+    # 400 Bad Request: missing file, non-PDF, 0-byte corrupt document
+    print(f"Resume validation failed: {exc}")
+except OccupationSelectionError as exc:
+    # 422 Unprocessable Entity: occupation missing or unresolvable.
+    # .suggested_occupations contains ranked recommendations to prompt the user
+    print(f"Occupation error: {exc}")
+    for occ in exc.suggested_occupations[:5]:
+        print(f" - {occ['occupation_label']} (Score: {occ['score']})")
+except PipelineError as exc:
+    # 500 Internal Server Error: general orchestration failure
+    print(f"Pipeline error: {exc}")
 ```
 
 ---

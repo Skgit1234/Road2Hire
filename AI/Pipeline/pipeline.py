@@ -20,6 +20,7 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 from pathlib import Path
+import threading
 import time
 from typing import Any
 
@@ -64,6 +65,9 @@ class Road2HirePipeline:
         self.model = model if model is not None else get_road2hire_model()
         self.base_output_dir = Path(base_output_dir)
 
+        # Re-entrant thread synchronization lock for lazy model loading
+        self._lock = threading.RLock()
+
         # Sub-components
         self.occupation_selector = TargetOccupationSelector(taxonomy=self.model._taxonomy)
         self.roadmap_generator = RoadmapGenerator(taxonomy=self.model._taxonomy)
@@ -86,6 +90,8 @@ class Road2HirePipeline:
         output_dir: Path | str | None = None,
         output_format: str = "both",
         top_n_occupations: int = 10,
+        *,
+        auto_select_top_occupation: bool = False,
     ) -> UnifiedPipelineResult:
         """Execute the complete end-to-end career readiness pipeline.
 
@@ -95,16 +101,22 @@ class Road2HirePipeline:
             Path to the candidate's PDF resume.
         target_occupation:
             Optional target occupation title, search string, or ESCO URI.
+            If None and auto_select_top_occupation=True, the highest-scoring
+            recommendation is automatically resolved.
             If None and interactive=True, the user is prompted in console.
-            If None and interactive=False, an OccupationSelectionError is raised.
+            If None and interactive=False and auto_select_top_occupation=False,
+            an OccupationSelectionError is raised with suggested_occupations.
         interactive:
             Whether to prompt user if target_occupation is omitted.
         output_dir:
             Custom output directory path for generated reports.
         output_format:
-            'both', 'json', or 'markdown'.
+            'both', 'json', 'markdown', or 'none'.
         top_n_occupations:
             Number of top matching occupations to display or rank.
+        auto_select_top_occupation:
+            If True and target_occupation is None, automatically select the top
+            recommended occupation from resume analysis.
 
         Returns
         -------
@@ -116,11 +128,29 @@ class Road2HirePipeline:
         warnings: list[str] = []
         errors: list[str] = []
 
+        # -----------------------------------------------------------------
+        # Input Validation
+        # -----------------------------------------------------------------
+        if resume_path is None or (isinstance(resume_path, str) and not resume_path.strip()):
+            raise ResumeValidationError("Resume path must be a non-empty string or Path object.")
+
+        if not isinstance(resume_path, (str, Path)):
+            raise ResumeValidationError(
+                f"Resume path must be a string or Path object, got: {type(resume_path).__name__}"
+            )
+
+        if target_occupation is not None and not isinstance(target_occupation, str):
+            raise TypeError(
+                f"target_occupation must be a string or None, got: {type(target_occupation).__name__}"
+            )
+
         path = Path(resume_path)
         if not path.is_file():
             raise ResumeValidationError(f"Resume file not found: {path}")
         if path.suffix.casefold() != ".pdf":
             raise ResumeValidationError(f"Expected a .pdf file, got: {path.suffix!r}")
+        if path.stat().st_size == 0:
+            raise ResumeValidationError(f"Failed to process resume '{path}': Resume file is empty (0 bytes)")
 
         # -----------------------------------------------------------------
         # Stage 1: Resume Processing, Skills, Normalization & Occupation Ranking
@@ -151,12 +181,14 @@ class Road2HirePipeline:
                 ranked_matches=ranked_matches,
                 interactive=interactive,
                 top_n=top_n_occupations,
+                auto_select_top=auto_select_top_occupation,
             )
         except OccupationSelectionError:
             raise
         except Exception as exc:
             raise OccupationSelectionError(
-                f"Failed to resolve target occupation: {exc}"
+                f"Failed to resolve target occupation: {exc}",
+                suggested_occupations=ranked_matches[:top_n_occupations],
             ) from exc
         timings["target_occupation_resolution_seconds"] = round(time.perf_counter() - t0, 4)
 
@@ -267,15 +299,16 @@ class Road2HirePipeline:
             status=status,
         )
 
-        try:
-            self.report_generator.save_reports(
-                result=result,
-                output_dir=output_dir,
-                output_format=output_format,
-            )
-        except Exception as exc:
-            logger.error("Failed to save report artifacts: %s", exc)
-            warnings.append(f"Report artifact saving failed: {exc}")
+        if output_format.casefold() != "none":
+            try:
+                self.report_generator.save_reports(
+                    result=result,
+                    output_dir=output_dir,
+                    output_format=output_format,
+                )
+            except Exception as exc:
+                logger.error("Failed to save report artifacts: %s", exc)
+                warnings.append(f"Report artifact saving failed: {exc}")
 
         return result
 
@@ -286,18 +319,24 @@ class Road2HirePipeline:
     def _ensure_readiness_model(self) -> Any:
         """Load and cache the persisted M4 readiness model pipeline."""
         if self._readiness_pipeline is None:
-            from AI.Readiness_Model.model_trainer import load_persisted_model
+            with self._lock:
+                if self._readiness_pipeline is None:
+                    from AI.Readiness_Model.model_trainer import load_persisted_model
 
-            self._readiness_pipeline, self._readiness_metadata = load_persisted_model()
+                    self._readiness_pipeline, self._readiness_metadata = load_persisted_model()
         return self._readiness_pipeline
 
     def _ensure_shap_explainer(self) -> Any:
         """Load and cache the M4.5 SHAP explainer."""
         if self._shap_explainer is None:
             pipeline = self._ensure_readiness_model()
-            from AI.Readiness_Model.shap_explainer import ReadinessModelExplainer
+            if pipeline is None:
+                raise RuntimeError("Cannot initialize SHAP explainer without readiness model pipeline.")
+            with self._lock:
+                if self._shap_explainer is None:
+                    from AI.Readiness_Model.shap_explainer import ReadinessModelExplainer
 
-            self._shap_explainer = ReadinessModelExplainer(pipeline=pipeline)
+                    self._shap_explainer = ReadinessModelExplainer(pipeline=pipeline)
         return self._shap_explainer
 
     def _extract_evidence_dict(self, resume_result: dict[str, Any]) -> dict[str, str]:
@@ -462,6 +501,9 @@ class Road2HirePipeline:
         warnings: list[str],
     ) -> SHAPExplanationData | None:
         """Generate SHAP explanations for candidate evidence using M4.5 explainer."""
+        if not predicted_class:
+            return None
+
         try:
             explainer = self._ensure_shap_explainer()
             evidence = self._extract_evidence_dict(resume_result)
@@ -499,4 +541,92 @@ class Road2HirePipeline:
             logger.warning("SHAP explainability failed: %s", exc)
             warnings.append(f"SHAP explanation skipped due to error: {exc}")
             return None
+
+
+# ---------------------------------------------------------------------------
+# Module-level cached pipeline singleton & public backend integration entry points
+# ---------------------------------------------------------------------------
+
+_pipeline_singleton: Road2HirePipeline | None = None
+_pipeline_lock = threading.RLock()
+
+
+def get_pipeline(
+    base_output_dir: Path | str = "Outputs",
+) -> Road2HirePipeline:
+    """Return a cached, thread-safe module-level Road2HirePipeline instance.
+
+    Reuses the underlying Road2HireModel singleton and M4 models to eliminate
+    redundant initialization overhead across multiple inference requests.
+    Thread-safe and suitable for FastAPI server processes.
+    """
+    global _pipeline_singleton  # noqa: PLW0603
+    if _pipeline_singleton is None:
+        with _pipeline_lock:
+            if _pipeline_singleton is None:
+                _pipeline_singleton = Road2HirePipeline(base_output_dir=base_output_dir)
+    return _pipeline_singleton
+
+
+def process_resume(
+    resume_path: str | Path,
+    target_occupation: str | None = None,
+    *,
+    auto_select_top_occupation: bool = False,
+    output_dir: Path | str | None = None,
+    output_format: str = "both",
+    top_n_occupations: int = 10,
+    pipeline: Road2HirePipeline | None = None,
+) -> UnifiedPipelineResult:
+    """Process a candidate resume and return canonical pipeline results.
+
+    This is the primary Python integration interface for the Road2Hire AI/ML
+    pipeline, designed for direct invocation by backend services (e.g. FastAPI
+    route handlers or async Celery/rq task workers).
+
+    Parameters
+    ----------
+    resume_path:
+        Path to candidate PDF resume file on disk.
+    target_occupation:
+        Target occupation title, ESCO URI, or search string. If None and
+        `auto_select_top_occupation` is True, the highest-ranking role is used.
+    auto_select_top_occupation:
+        If True and target_occupation is None, automatically selects the #1
+        occupation recommendation derived from extracted skills.
+    output_dir:
+        Optional destination directory for JSON and Markdown report artifacts.
+    output_format:
+        'both' (default), 'json', 'markdown', or 'none'.
+    top_n_occupations:
+        Number of ranked occupation recommendations to compute (default 10).
+    pipeline:
+        Optional custom Road2HirePipeline instance. If None, the shared
+        thread-safe pipeline instance from `get_pipeline()` is used.
+
+    Returns
+    -------
+    UnifiedPipelineResult
+        The validated, structured pipeline result object. Call `.to_canonical_dict()`
+        or `.to_json()` to produce Draft-07 compliant JSON for HTTP responses.
+
+    Raises
+    ------
+    ResumeValidationError:
+        If the resume file is missing, empty, not a PDF, or extraction fails.
+    OccupationSelectionError:
+        If target occupation is invalid or omitted when auto_select_top_occupation is False.
+    PipelineError:
+        If any fatal pipeline orchestration error occurs.
+    """
+    active_pipeline = pipeline if pipeline is not None else get_pipeline()
+    return active_pipeline.run(
+        resume_path=resume_path,
+        target_occupation=target_occupation,
+        interactive=False,
+        output_dir=output_dir,
+        output_format=output_format,
+        top_n_occupations=top_n_occupations,
+        auto_select_top_occupation=auto_select_top_occupation,
+    )
 
