@@ -231,13 +231,19 @@ Datasets/*.xlsx
 !Docs/External_Resume_Job_Dataset_Integration.md
 !Docs/AI_ML_Database_Storage_Specification.md
 !Docs/AI_ML_Database_Field_Mapping.md
+!Docs/AI_ML_Limitations_and_Future_Work.md
+!Docs/AI_ML_Final_Handover.md
 
 # External and Large Processed Datasets
 Datasets/External/
-Datasets/Processed/External_Job_Resume_Matching/*.jsonl
-Datasets/Processed/External_Job_Resume_Matching/*.json
+Datasets/Processed/External_Job_Resume_Matching/
 Datasets/Processed/*.xlsx
 
 # Pipeline Outputs & Candidate Reports
 Outputs/
+
+# Personal test resumes & scratch scripts
+Tests/AI/*_Resume*.pdf
+Tests/AI/* - Resume.pdf
+test_resume_pipeline.py
 
