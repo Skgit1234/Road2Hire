@@ -292,13 +292,95 @@ class Road2HirePipeline:
         return self._shap_explainer
 
     def _extract_evidence_dict(self, resume_result: dict[str, Any]) -> dict[str, str]:
-        """Convert resume sections into candidate evidence dictionary for M4."""
+        """Convert candidate profile and sections into evidence dictionary for M4.
+
+        Ensures consistency between inference evidence and M4 training evidence schema:
+        - skills_text: comma-separated list of candidate skills.
+        - experience_text: newline-delimited list of distinct professional positions.
+        - projects_text: newline-delimited list of projects with (Tech: ...) tags.
+        - education_text: newline-delimited list of academic qualifications.
+        """
+        prof = resume_result.get("candidate_profile", {})
         sections = resume_result.get("sections", {})
+
+        # 1. Skills Text: Prefer normalized skills from candidate profile, fallback to raw section
+        prof_skills = prof.get("skills", [])
+        if prof_skills and isinstance(prof_skills, list):
+            skill_names = [
+                s.get("ESCO_Skill_Name") or s.get("skill")
+                for s in prof_skills
+                if isinstance(s, dict) and (s.get("ESCO_Skill_Name") or s.get("skill"))
+            ]
+            skills_text = ", ".join(skill_names)
+        else:
+            skills_text = sections.get("skills", "")
+
+        # 2. Experience Text: Format distinct position lines to avoid raw-line explosion
+        prof_exps = prof.get("experience", [])
+        if prof_exps and isinstance(prof_exps, list):
+            exp_lines = []
+            for e in prof_exps:
+                if not isinstance(e, dict):
+                    continue
+                title = e.get("job_title") or "Professional"
+                org = e.get("organization") or ""
+                org_str = f" at {org}" if org else ""
+                resps = e.get("responsibilities", [])
+                resp_str = f" - {resps[0][:100]}" if (resps and isinstance(resps, list)) else ""
+                skills_used = e.get("skills_used", [])
+                skills_str = (
+                    f" [Skills: {', '.join(skills_used[:4])}]"
+                    if (skills_used and isinstance(skills_used, list))
+                    else ""
+                )
+                exp_lines.append(f"• {title}{org_str}{resp_str}{skills_str}")
+            experience_text = "\n".join(exp_lines)
+        else:
+            experience_text = sections.get("experience", "")
+
+        # 3. Projects Text: Format with (Tech: ...) tags consistent with training data
+        prof_projs = prof.get("projects", [])
+        if prof_projs and isinstance(prof_projs, list):
+            proj_lines = []
+            for p in prof_projs:
+                if not isinstance(p, dict):
+                    continue
+                p_name = p.get("project_name") or "Project"
+                desc = p.get("description") or ""
+                desc_short = f": {desc[:100]}..." if desc else ""
+                techs = p.get("technologies", [])
+                tech_str = (
+                    f" (Tech: {', '.join(techs[:5])})"
+                    if (techs and isinstance(techs, list))
+                    else ""
+                )
+                proj_lines.append(f"• {p_name}{desc_short}{tech_str}")
+            projects_text = "\n".join(proj_lines)
+        else:
+            projects_text = sections.get("projects", "")
+
+        # 4. Education Text: Format degree, field, and institution lines
+        prof_edus = prof.get("education", [])
+        if prof_edus and isinstance(prof_edus, list):
+            edu_lines = []
+            for ed in prof_edus:
+                if not isinstance(ed, dict):
+                    continue
+                deg = ed.get("degree") or "Degree"
+                field = ed.get("field_of_study") or ""
+                inst = ed.get("institution") or ""
+                inst_str = f" at {inst}" if inst else ""
+                field_str = f" in {field}" if field else ""
+                edu_lines.append(f"• {deg}{field_str}{inst_str}".strip())
+            education_text = "\n".join(edu_lines)
+        else:
+            education_text = sections.get("education", "")
+
         return {
-            "skills_text": sections.get("skills", ""),
-            "experience_text": sections.get("experience", ""),
-            "projects_text": sections.get("projects", ""),
-            "education_text": sections.get("education", ""),
+            "skills_text": skills_text,
+            "experience_text": experience_text,
+            "projects_text": projects_text,
+            "education_text": education_text,
         }
 
     def _predict_readiness(

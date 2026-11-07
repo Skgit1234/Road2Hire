@@ -2,7 +2,38 @@
 """Generate semantic embeddings for normalized Road2Hire skills."""
 
 from functools import lru_cache
+import os
 from typing import Any
+import warnings
+
+# Suppress progress bars and third-party notices by default unless verbose is explicitly enabled
+os.environ.setdefault("TQDM_DISABLE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*unauthenticated requests to the HF Hub.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module=r"huggingface_hub.*",
+)
+
+try:
+    import huggingface_hub.utils.logging as hf_logging
+    if os.environ.get("ROAD2HIRE_VERBOSE") != "1":
+        hf_logging.set_verbosity_error()
+except ImportError:
+    pass
+
+try:
+    import transformers.utils.logging as t_logging
+    if os.environ.get("ROAD2HIRE_VERBOSE") != "1":
+        t_logging.set_verbosity_error()
+except ImportError:
+    pass
 
 from sentence_transformers import SentenceTransformer
 

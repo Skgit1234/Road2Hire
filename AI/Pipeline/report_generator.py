@@ -76,15 +76,16 @@ class ReportGenerator:
         if custom_dir is not None:
             run_dir = Path(custom_dir)
         else:
-            cand_name = "candidate"
+            cand_name = "unnamed_candidate"
             try:
-                name_info = (
+                candidate_info = (
                     result.candidate_profile.get("candidate", {})
-                    .get("personal_info", {})
-                    .get("name")
+                    if isinstance(result.candidate_profile, dict)
+                    else {}
                 )
-                if name_info and isinstance(name_info, str) and name_info.strip():
-                    cand_name = re.sub(r"[^a-zA-Z0-9_\-]+", "_", name_info.strip())
+                raw_name = candidate_info.get("name") if isinstance(candidate_info, dict) else None
+                if raw_name and isinstance(raw_name, str) and raw_name.strip():
+                    cand_name = re.sub(r"[^a-zA-Z0-9_\-]+", "_", raw_name.strip())
             except Exception:
                 pass
 
@@ -104,8 +105,17 @@ class ReportGenerator:
         readiness = res.readiness_prediction
         shap_exp = res.shap_explanation
         roadmap = res.learning_roadmap
-        cand = res.candidate_profile.get("candidate", {}).get("personal_info", {})
-        cand_name = cand.get("name") or "Candidate"
+        cand = (
+            res.candidate_profile.get("candidate", {})
+            if isinstance(res.candidate_profile, dict)
+            else {}
+        )
+        raw_name = cand.get("name") if isinstance(cand, dict) else None
+        cand_name = (
+            raw_name.strip()
+            if raw_name and isinstance(raw_name, str) and raw_name.strip()
+            else "Not provided"
+        )
 
         lines: list[str] = [
             f"# Road2Hire — Career Readiness & Skill Gap Intelligence Report",

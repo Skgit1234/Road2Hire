@@ -32,6 +32,11 @@ YEAR_RANGE_PATTERN = re.compile(
     r"\b(19\d{2}|20\d{2})\s*(?:[-–—]|to)\s*(19\d{2}|20\d{2}|[Pp]resent|[Ee]xpected|[Cc]urrent)\b"
 )
 
+EXPERIENCE_DATE_PATTERN = re.compile(
+    r"((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(?:19|20)\d{2})\s*(?:[-–—]|to)\s*((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(?:19|20)\d{2}|[Pp]resent|[Cc]urrent)",
+    re.IGNORECASE,
+)
+
 SINGLE_YEAR_PATTERN = re.compile(r"\b(19\d{2}|20\d{2})\b")
 
 CGPA_PATTERN = re.compile(
@@ -393,14 +398,36 @@ def parse_experience_section(text: str) -> list[dict[str, Any]]:
         if header_lines:
             first_line = header_lines[0]
             first_parts = [p.strip() for p in first_line.split("|")]
-            job_title = first_parts[0]
 
-            if len(first_parts) > 1:
-                organization = first_parts[1]
-            elif len(header_lines) > 1:
-                second_line = header_lines[1]
-                second_parts = [p.strip() for p in second_line.split("|")]
-                organization = second_parts[0]
+            # Check if first line is exclusively a date / employment metadata line
+            is_date_line = bool(
+                EXPERIENCE_DATE_PATTERN.search(first_parts[0]) or YEAR_RANGE_PATTERN.search(first_parts[0])
+            )
+
+            if is_date_line and len(header_lines) > 1:
+                title_line = header_lines[1]
+                t_parts = [p.strip() for p in title_line.split("|")]
+                if len(t_parts) > 1:
+                    job_title = t_parts[0]
+                    organization = t_parts[1]
+                elif " - " in title_line:
+                    t_sub = title_line.split(" - ", 1)
+                    job_title = t_sub[0].strip()
+                    organization = t_sub[1].strip()
+                elif ", " in title_line:
+                    t_sub = title_line.rsplit(", ", 1)
+                    job_title = t_sub[0].strip()
+                    organization = t_sub[1].strip()
+                else:
+                    job_title = title_line
+            else:
+                job_title = first_parts[0]
+                if len(first_parts) > 1:
+                    organization = first_parts[1]
+                elif len(header_lines) > 1:
+                    second_line = header_lines[1]
+                    second_parts = [p.strip() for p in second_line.split("|")]
+                    organization = second_parts[0]
 
         # Employment type
         full_block = " ".join(lines)
@@ -411,11 +438,7 @@ def parse_experience_section(text: str) -> list[dict[str, Any]]:
 
         # Dates
         # Matches e.g. "January 2026 - June 2026" or "2022 - 2024" or "May 2023 - Present"
-        date_pattern = re.compile(
-            r"((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(?:19|20)\d{2})\s*(?:[-–—]|to)\s*((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(?:19|20)\d{2}|[Pp]resent|[Cc]urrent)",
-            re.IGNORECASE,
-        )
-        date_match = date_pattern.search(full_block)
+        date_match = EXPERIENCE_DATE_PATTERN.search(full_block)
         if date_match:
             start_date = date_match.group(1).strip()
             end_date = date_match.group(2).strip()
@@ -428,7 +451,7 @@ def parse_experience_section(text: str) -> list[dict[str, Any]]:
 
         # Clean dates from organization if it was matched there
         if organization and (start_date or end_date):
-            organization = re.sub(date_pattern, "", organization).strip(" |-–—")
+            organization = re.sub(EXPERIENCE_DATE_PATTERN, "", organization).strip(" |-–—")
 
         # Extract skills used mentioned in the block
         lower_block = full_block.lower()

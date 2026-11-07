@@ -31,7 +31,7 @@ from AI.Pipeline import (
     SelectedOccupation,
     TargetOccupationSelector,
 )
-from AI.Pipeline.cli import main as cli_main
+from AI.Pipeline.cli import extract_candidate_name, main as cli_main
 from AI.Pipeline.report_generator import ReportGenerator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -177,6 +177,59 @@ class TestReadinessAndSHAPIntegration:
         assert len(shap_exp.human_readable_summary) > 20
         assert len(shap_exp.waterfall_steps) == 10  # base + 9 features
 
+    def test_feature_consistency_and_extraction(self, sample_pipeline_result):
+        """Verify inference feature extraction matches structured candidate evidence."""
+        readiness = sample_pipeline_result.readiness_prediction
+        assert readiness is not None
+        feats = readiness.feature_values
+        assert feats["skills_count"] == 6.0
+        assert feats["exp_positions_count"] == 1.0  # 1 position, NOT multi-line explosion
+        assert feats["has_senior_role"] == 0.0
+        assert feats["project_count"] == 1.0
+        assert feats["project_tech_count"] >= 1.0   # Python tagged in project
+        assert feats["edu_level_ordinal"] == 1.0    # Bachelor level
+        assert feats["is_stem_degree"] == 1.0       # Computer Science
+
+    def test_missing_evidence_defaults_safely(self, pipeline: Road2HirePipeline):
+        """Verify empty/missing profile fields default gracefully to 0.0."""
+        empty_res = {"candidate_profile": {}, "sections": {}}
+        ev = pipeline._extract_evidence_dict(empty_res)
+        assert ev["skills_text"] == ""
+        assert ev["experience_text"] == ""
+        assert ev["projects_text"] == ""
+        assert ev["education_text"] == ""
+
+        from AI.Readiness_Model.feature_extractor import ReadinessFeatureExtractor
+        extractor = ReadinessFeatureExtractor()
+        matrix = extractor.transform([ev])[0]
+        # All counts must be 0.0
+        assert matrix[0] == 0.0  # skills_count
+        assert matrix[1] == 0.0  # exp_positions_count
+        assert matrix[2] == 0.0  # has_senior_role
+        assert matrix[3] == 0.0  # project_count
+        assert matrix[4] == 0.0  # project_words
+        assert matrix[5] == 0.0  # project_tech_count
+        assert matrix[6] == 0.0  # has_production_system
+        assert matrix[7] == 0.0  # edu_level_ordinal
+        assert matrix[8] == 0.0  # is_stem_degree
+
+    def test_target_occupation_propagation(self, sample_pipeline_result):
+        """Verify target occupation is correctly propagated to all pipeline stages."""
+        occ = sample_pipeline_result.selected_occupation
+        assert occ.occupation_label == "data engineer"
+        assert "2079755f-d809-49e6-8037-4de6180e54c0" in occ.occupation_uri
+
+        # Propagated to skill gap analysis
+        gap_occ = sample_pipeline_result.skill_gap_analysis["target_occupation"]
+        if isinstance(gap_occ, dict):
+            assert gap_occ["uri"] == occ.occupation_uri
+        else:
+            assert gap_occ == occ.occupation_uri
+
+        # Propagated to roadmap
+        assert sample_pipeline_result.learning_roadmap.target_occupation_uri == occ.occupation_uri
+        assert sample_pipeline_result.learning_roadmap.target_occupation_title == occ.occupation_label
+
 
 # =============================================================================
 # 5. Personalized Learning Roadmap Generation
@@ -253,12 +306,38 @@ class TestReportGeneration:
 
 
 # =============================================================================
-# 7. Single Command CLI Invocation
+# 7. Candidate Information & Name Resolution
+# =============================================================================
+
+
+class TestCandidateNameExtraction:
+    """Validates candidate name extraction, sanitization, and fallback behavior."""
+
+    def test_extract_valid_name_trimmed(self):
+        profile = {"candidate": {"name": "  Alex Morgan  "}}
+        assert extract_candidate_name(profile) == "Alex Morgan"
+
+    def test_extract_missing_or_empty_returns_not_provided(self):
+        assert extract_candidate_name(None) == "Not provided"
+        assert extract_candidate_name({}) == "Not provided"
+        assert extract_candidate_name({"candidate": {}}) == "Not provided"
+        assert extract_candidate_name({"candidate": {"name": None}}) == "Not provided"
+        assert extract_candidate_name({"candidate": {"name": ""}}) == "Not provided"
+        assert extract_candidate_name({"candidate": {"name": "   "}}) == "Not provided"
+
+    def test_name_never_derived_from_filename(self):
+        profile = {"candidate": {"name": None}, "source_file": "alex_morgan_cv.pdf"}
+        # Must strictly return 'Not provided' regardless of filename in profile or input
+        assert extract_candidate_name(profile) == "Not provided"
+
+
+# =============================================================================
+# 8. Single Command CLI Invocation & Terminal Output
 # =============================================================================
 
 
 class TestCLIExecution:
-    """Validates command-line interface execution and exit codes."""
+    """Validates command-line interface execution, clean output, and exit codes."""
 
     def test_cli_explicit_occupation_success(self, tmp_path: Path):
         code = cli_main([
@@ -276,4 +355,59 @@ class TestCLIExecution:
             "--quiet",
         ])
         assert code != 0
+
+    def test_cli_clean_normal_output(self, tmp_path: Path, capsys: pytest.CaptureFixture):
+        """Verify normal CLI run emits clean banner and summary without noisy HTTP logs or warnings."""
+        code = cli_main([
+            "--resume", str(SAMPLE_PDF),
+            "--occupation", "data engineer",
+            "--output", str(tmp_path),
+        ])
+        assert code == 0
+        captured = capsys.readouterr()
+
+        # Professional banner and summary present
+        assert "ROAD2HIRE — CAREER READINESS & RESUME INTELLIGENCE PIPELINE" in captured.out
+        assert "ROAD2HIRE — PIPELINE EXECUTION SUMMARY" in captured.out
+        assert "Processing Status:   Success" in captured.out
+        assert "Candidate Name:      Alex Morgan" in captured.out
+        assert "Target Occupation:   data engineer" in captured.out
+        assert "Overall Coverage:" in captured.out
+        assert "Readiness Class:" in captured.out
+        assert "Generated Report Artifacts:" in captured.out
+
+        # Noisy third-party messages suppressed
+        assert "unauthenticated requests to the HF Hub" not in captured.err
+        assert "unauthenticated requests to the HF Hub" not in captured.out
+        assert "Loading weights:" not in captured.err
+        assert "HTTP Request:" not in captured.out
+        assert "HTTP Request:" not in captured.err
+
+    def test_cli_verbose_output(self, tmp_path: Path, capsys: pytest.CaptureFixture):
+        """Verify --verbose exposes diagnostic INFO logging and trace output."""
+        code = cli_main([
+            "--resume", str(SAMPLE_PDF),
+            "--occupation", "data engineer",
+            "--output", str(tmp_path),
+            "--verbose",
+        ])
+        assert code == 0
+        captured = capsys.readouterr()
+        combined = captured.out + captured.err
+        assert "[INFO]" in combined or "Loading" in combined or "Road2HireModel:" in combined
+
+    def test_cli_invalid_pdf_returns_concise_error(self, tmp_path: Path, capsys: pytest.CaptureFixture):
+        """Verify pipeline failures produce concise non-zero exit and clear error."""
+        txt_file = tmp_path / "resume.txt"
+        txt_file.write_text("plain text resume", encoding="utf-8")
+
+        code = cli_main([
+            "--resume", str(txt_file),
+            "--occupation", "data engineer",
+            "--output", str(tmp_path),
+        ])
+        assert code == 1
+        captured = capsys.readouterr()
+        assert "[PIPELINE ERROR]" in captured.err
+        assert "Processing Status:   Success" not in captured.out
 
