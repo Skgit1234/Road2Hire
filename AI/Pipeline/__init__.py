@@ -13,12 +13,14 @@ from AI.Pipeline.pipeline import (
 )
 from AI.Pipeline.pipeline_schema import (
     LearningRoadmap,
+    PipelineErrorDetails,
     ReadinessPredictionData,
     RoadmapItem,
     RoadmapPhase,
     SelectedOccupation,
     SHAPExplanationData,
     UnifiedPipelineResult,
+    create_error_response,
 )
 from AI.Pipeline.report_generator import ReportGenerator
 from AI.Pipeline.roadmap_generator import RoadmapGenerator
@@ -39,6 +41,8 @@ __all__ = [
     "ReadinessPredictionData",
     "SHAPExplanationData",
     "UnifiedPipelineResult",
+    "PipelineErrorDetails",
+    "create_error_response",
     "TargetOccupationSelector",
     "RoadmapGenerator",
     "ReportGenerator",

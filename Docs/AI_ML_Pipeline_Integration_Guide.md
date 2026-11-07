@@ -177,19 +177,76 @@ Backend developers must adhere to the following governance rules when displaying
 
 ---
 
-## 7. Error Handling Contract
+## 7. Error Handling & Structured Failure Contracts
 
-| Exception Class | HTTP Status Equivalent | Trigger Condition | Recommended Backend Action |
-|:---|:---:|:---|:---|
-| `ResumeValidationError` | `400 Bad Request` | File does not exist, file is not `.pdf`, 0-byte corrupt file, or unreadable binary. | Return error message to user; prompt for valid PDF upload. |
-| `OccupationSelectionError` | `400 Bad Request` | Target occupation query could not be resolved to any ESCO occupation, or query omitted in non-interactive mode. | Return top suggested occupations provided in `ranked_matches` to client for selection. |
-| `PipelineError` | `500 Server Error` | Unexpected internal exception during pipeline processing. | Log full traceback; return generic processing error to client. |
+When pipeline operations fail, the exception types map directly to standard HTTP status codes:
+
+| Exception Class | HTTP Status Equivalent | Standard Error Code | Trigger Condition | Recommended Backend Action |
+|:---|:---:|:---|:---|:---|
+| `ResumeValidationError` | `400 Bad Request` | `RESUME_NOT_FOUND`<br>`INVALID_FILE_TYPE`<br>`EMPTY_OR_CORRUPT_DOCUMENT` | File does not exist, file is not `.pdf`, 0-byte corrupt file, or unreadable binary. | Return error message to user; prompt for valid PDF upload. |
+| `OccupationSelectionError` | `400 Bad Request` | `OCCUPATION_NOT_FOUND`<br>`OCCUPATION_SELECTION_REQUIRED` | Target occupation query could not be resolved to any ESCO occupation, or query omitted in non-interactive mode. | Return top suggested occupations provided in `ranked_matches` to client for selection. |
+| `PipelineError` | `500 Server Error` | `MODEL_ARTIFACT_MISSING`<br>`PIPELINE_EXECUTION_ERROR` | Unexpected internal exception or missing model weights during pipeline processing. | Log full traceback; return generic processing error to client. |
+
+### Helper Function for Backend Error Payloads
+Backend endpoints can construct error responses conforming strictly to [`pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json) using the built-in helper:
+
+```python
+from AI.Pipeline import create_error_response
+
+# Construct structured JSON error payload
+error_payload = create_error_response(
+    code="OCCUPATION_NOT_FOUND",
+    message="Target occupation 'quantum chef' could not be resolved to any canonical ESCO concept.",
+    stage="occupation_resolution",
+    details={"query": "quantum chef"},
+    recoverable=True,
+    warnings=["Suggestions available in previous step."],
+)
+```
 
 Recoverable issues (such as SHAP calculation failure or OCR notification) do **not** raise exceptions; they append descriptive messages to `result.warnings` and set `result.status = "warning"`.
 
 ---
 
-## 8. Sample Sanitized JSON Output Payload
+## 8. Database Architecture & PostgreSQL JSONB Guidelines
+
+When persisting pipeline outputs in PostgreSQL, the backend service should partition relational indexable columns from semi-structured JSONB payloads:
+
+| Field / Section | Storage Type | Recommended Column Name | Justification |
+|:---|:---|:---|:---|
+| `candidate_profile.candidate.name` | `VARCHAR(255)` | `candidate_name` | Fast search, filtering, and sorting in candidate tables. |
+| `candidate_profile.candidate.email`| `VARCHAR(255)` | `candidate_email`| Unique constraint, candidate identity lookup. |
+| `target_occupation.occupation_uri`  | `TEXT` | `target_occupation_uri` | Foreign key / index to filter candidates by target role. |
+| `target_occupation.occupation_label`| `VARCHAR(255)` | `target_occupation_title` | Display on job application cards without deserializing JSONB. |
+| `skill_gap.overall_skill_coverage_score` | `NUMERIC(5, 4)` | `overall_skill_coverage` | Fast filtering (`WHERE overall_skill_coverage >= 0.70`). |
+| `readiness.predicted_class`        | `VARCHAR(50)` | `readiness_class` | Fast indexing (`Developing`, `Job Ready`, `Not Ready`). |
+| `readiness.is_ood`                 | `BOOLEAN` | `is_ood` | Flagging anomalous profiles for review. |
+| `candidate_profile` (full)         | `JSONB` | `profile_data` | Preserves nested education, experience, and project trees. |
+| `skill_gap` (full)                 | `JSONB` | `skill_gap_data` | Preserves 3-tier matched, partial, and missing skill lists. |
+| `readiness` (full)                 | `JSONB` | `readiness_data` | Preserves heuristic probabilities and OOD feature diagnostics. |
+| `explanations` (full)              | `JSONB` | `shap_explanation_data` | Powers interactive waterfall and attribution visualizations. |
+| `learning_roadmap` (full)          | `JSONB` | `roadmap_data` | Renders 4-phase learning milestones in user dashboard. |
+
+---
+
+## 9. System Responsibilities Matrix
+
+| Capability / Concern | AI/ML Pipeline Responsibility | Backend Service Responsibility |
+|:---|:---:|:---:|
+| **Resume Text & Skill Extraction** | **YES** | NO |
+| **ESCO Normalization & Concept Matching** | **YES** | NO |
+| **Skill Gap & Readiness Calculation** | **YES** | NO |
+| **SHAP Explanation Decomposition** | **YES** | NO |
+| **Learning Roadmap Generation** | **YES** | NO |
+| **User Authentication & Auth0/JWT** | NO | **YES** |
+| **File Upload Storage (S3 / Local)** | NO | **YES** |
+| **Database Persistence (PostgreSQL)** | NO | **YES** |
+| **API Rate Limiting & Background Tasks** | NO | **YES** |
+| **Email Notifications & Webhooks** | NO | **YES** |
+
+---
+
+## 10. Sample Sanitized Canonical JSON Output (v1.0.0)
 
 ```json
 {

@@ -155,16 +155,79 @@ class UnifiedPipelineResult:
     errors: list[str] = field(default_factory=list)
     report_paths: dict[str, str] = field(default_factory=dict)
     status: Literal["success", "warning", "error"] = "success"
+    schema_version: str = "1.0.0"
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_canonical_dict(self) -> dict[str, Any]:
+        """Return the clean canonical 10-section JSON contract matching pipeline_output.schema.json."""
         return {
+            "schema_version": self.schema_version,
+            "metadata": {
+                "schema_version": self.schema_version,
+                "pipeline_version": self.pipeline_version,
+                "status": self.status,
+                "timestamp": self.timestamp,
+                "source_file": self.source_file,
+                "page_count": self.page_count,
+                "extraction_status": self.extraction_status,
+                "execution_timings_seconds": self.execution_timings_seconds,
+            },
+            "candidate_profile": self.candidate_profile,
+            "skills": {
+                "extracted_skills": self.extracted_skills,
+                "esco_mappings": self.esco_mappings,
+                "extracted_skill_count": len(self.extracted_skills),
+                "mapped_skill_count": len(self.esco_mappings),
+            },
+            "occupation_recommendations": self.occupation_matches,
+            "target_occupation": (
+                self.selected_occupation.to_dict()
+                if self.selected_occupation
+                else None
+            ),
+            "skill_gap": self.skill_gap_analysis,
+            "readiness": (
+                self.readiness_prediction.to_dict()
+                if self.readiness_prediction
+                else None
+            ),
+            "explanations": (
+                self.shap_explanation.to_dict()
+                if self.shap_explanation
+                else None
+            ),
+            "knowledge_graph": self.personalized_graph_summary,
+            "learning_roadmap": (
+                self.learning_roadmap.to_dict()
+                if self.learning_roadmap
+                else None
+            ),
+            "warnings": self.warnings,
+            "errors": self.errors,
+            "report_paths": self.report_paths,
+        }
+
+    def to_dict(self, canonical: bool = False) -> dict[str, Any]:
+        """Return the dictionary representation of the pipeline result.
+
+        Parameters
+        ----------
+        canonical:
+            If True, returns strictly the 10-section canonical output contract.
+            If False (default), includes both canonical sections and top-level fields
+            for complete backward compatibility.
+        """
+        if canonical:
+            return self.to_canonical_dict()
+
+        base = self.to_canonical_dict()
+        # Merge top-level legacy fields for 100% backward compatibility
+        base.update({
             "status": self.status,
             "pipeline_version": self.pipeline_version,
             "timestamp": self.timestamp,
             "source_file": self.source_file,
             "page_count": self.page_count,
             "extraction_status": self.extraction_status,
-            "candidate_profile": self.candidate_profile,
             "extracted_skills": self.extracted_skills,
             "esco_mappings": self.esco_mappings,
             "occupation_matches": self.occupation_matches,
@@ -185,18 +248,54 @@ class UnifiedPipelineResult:
                 if self.shap_explanation
                 else None
             ),
-            "learning_roadmap": (
-                self.learning_roadmap.to_dict()
-                if self.learning_roadmap
-                else None
-            ),
             "execution_timings_seconds": self.execution_timings_seconds,
-            "warnings": self.warnings,
-            "errors": self.errors,
-            "report_paths": self.report_paths,
-        }
+        })
+        return base
 
-    def to_json(self, indent: int = 2) -> str:
+    def to_json(self, indent: int = 2, canonical: bool = False) -> str:
         """Serialize the complete pipeline result to a formatted JSON string."""
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(canonical=canonical), indent=indent)
+
+
+# ---------------------------------------------------------------------------
+# Structured Pipeline Error Data Contracts
+# ---------------------------------------------------------------------------
+
+@dataclass(slots=True)
+class PipelineErrorDetails:
+    """Standardized error payload for pipeline exceptions."""
+
+    code: str
+    message: str
+    stage: str
+    details: dict[str, Any] = field(default_factory=dict)
+    recoverable: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def create_error_response(
+    code: str,
+    message: str,
+    stage: str,
+    details: dict[str, Any] | None = None,
+    recoverable: bool = False,
+    warnings: list[str] | None = None,
+    schema_version: str = "1.0.0",
+) -> dict[str, Any]:
+    """Create a structured error dictionary matching pipeline_error.schema.json."""
+    return {
+        "schema_version": schema_version,
+        "status": "error",
+        "timestamp": datetime.now().isoformat(),
+        "error": {
+            "code": code,
+            "message": message,
+            "stage": stage,
+            "details": details or {},
+            "recoverable": recoverable,
+        },
+        "warnings": warnings or [],
+    }
 
