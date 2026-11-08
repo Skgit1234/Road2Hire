@@ -143,16 +143,21 @@ python -m AI.Pipeline.cli Tests/AI/sample_resume.pdf --occupation "software deve
 2. **Explainability Bounds:** SHAP attributions represent local linear model feature credit relative to training base rates; they do not establish real-world causal mechanisms.
 3. **Advisory Tool:** Road2Hire is designed as an assistive decision-support tool. It must never be used as an autonomous gatekeeper for employment or academic admissions.
 
-For in-depth analysis of scientific limitations, consult [`Docs/AI_ML_Limitations_and_Future_Work.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Limitations_and_Future_Work.md).
+For in-depth analysis of scientific limitations, consult [`Docs/04_AI_ML_Model_Evaluation_and_Limitations.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/04_AI_ML_Model_Evaluation_and_Limitations.md).
 
 ---
 
 ## Documentation Index
 
-- [AI/ML Final Handover Document](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Final_Handover.md)
-- [AI/ML Pipeline Integration Guide](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Pipeline_Integration_Guide.md)
-- [AI/ML Output Contract & Schema Specification](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Output_Contract.md)
-- [AI/ML Database Storage Specification](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Storage_Specification.md)
-- [AI/ML Database Field Mapping Guide](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Field_Mapping.md)
-- [AI/ML Limitations & Future Work](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Limitations_and_Future_Work.md)
+The complete Road2Hire AI/ML technical documentation is organized into seven core documents in `Docs/`:
+
+1. [01: AI/ML Architecture and Pipeline Specification](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/01_AI_ML_Architecture_and_Pipeline.md)
+2. [02: AI/ML Research, Methodology and Taxonomy Strategy](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/02_AI_ML_Research_and_Taxonomy.md)
+3. [03: AI/ML Algorithms, Mathematical Formulations and Methodology](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/03_AI_ML_Algorithms_and_Methodology.md)
+4. [04: AI/ML Model Evaluation, Benchmarks and Scientific Limitations](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/04_AI_ML_Model_Evaluation_and_Limitations.md)
+5. [05: AI/ML Output JSON Contract and Backend Integration Guide](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/05_AI_ML_Output_and_Integration_Contract.md)
+6. [06: Database Storage Specification and AI/ML Data Mapping](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/06_AI_ML_Database_Storage_Specification.md)
+7. [07: AI/ML Engineering Final Handover Document](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/07_AI_ML_Final_Handover.md)
+
+Additional module guides:
 - [Pipeline Package Documentation](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/README.md)

@@ -5,8 +5,8 @@
 **Date:** November 2026  
 **JSON Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json)  
 **JSON Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json)  
-**Contract Documentation:** [`Docs/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Output_Contract.md)  
-**Handover Guide:** [`Docs/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Pipeline_Integration_Guide.md)  
+**Contract Documentation:** [`Docs/Archive/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Output_Contract.md)
+**Handover Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
 **Schema Test Suite:** [`Tests/AI/test_pipeline_schema_contract.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Tests/AI/test_pipeline_schema_contract.py)  
 
 ---
@@ -98,8 +98,8 @@ In [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Ro
 1. **Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json)
 2. **Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json)
 3. **Schema Architecture Guide:** [`AI/Pipeline/schemas/README.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/README.md)
-4. **Contract Documentation & Examples:** [`Docs/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Output_Contract.md)
-5. **Backend Handover Guide:** [`Docs/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Pipeline_Integration_Guide.md)
+4. **Contract Documentation & Examples:** [`Docs/Archive/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Output_Contract.md)
+5. **Backend Handover Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
 6. **Schema Validation Tests:** [`Tests/AI/test_pipeline_schema_contract.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Tests/AI/test_pipeline_schema_contract.py)
 7. **Pipeline Schema Implementation:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)
 8. **Phase 4 Completion Report:** [`AI/Pipeline/phase4_contract_report.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/phase4_contract_report.md)

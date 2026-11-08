@@ -5,7 +5,7 @@
 **Date:** November 2026  
 **Pipeline Orchestrator:** [`AI/Pipeline/pipeline.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline.py)  
 **Schema Contract:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)  
-**Integration Guide:** [`Docs/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Pipeline_Integration_Guide.md)  
+**Integration Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
 **Architecture Audit:** [`AI/Pipeline/phase3_architecture_audit.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/phase3_architecture_audit.md)  
 
 ---
@@ -168,7 +168,7 @@ json_string = result.to_json(indent=2)
 - `AI/Pipeline/README.md` — Pipeline package documentation.
 - `AI/Pipeline/phase3_architecture_audit.md` — Detailed architectural verification matrix.
 - `AI/Pipeline/phase3_completion_report.md` — This comprehensive completion report.
-- `Docs/AI_ML_Pipeline_Integration_Guide.md` — Complete handover guide for backend engineers.
+- `Docs/Archive/AI_ML_Pipeline_Integration_Guide.md` — Complete handover guide for backend engineers.
 - `Tests/AI/test_pipeline_integration.py` — Dedicated 10-test programmatic interface and edge-case test suite.
 
 ---
