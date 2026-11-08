@@ -215,24 +215,22 @@ Documentation
 
 Docs/*
 !Docs/.gitkeep
-!Docs/Skill_Taxonomy_Strategy.md
-!Docs/ESCO_ONET_Mapping_Strategy.md
-!Docs/Annotation_Strategy.md
-
-!Docs/Phase_4_Candidate_Profile_Enhancement.md
+!Docs/System Architecture Diagram.png
+!Docs/01_AI_ML_Architecture_and_Pipeline.md
+!Docs/02_AI_ML_Research_and_Taxonomy.md
+!Docs/03_AI_ML_Algorithms_and_Methodology.md
+!Docs/04_AI_ML_Model_Evaluation_and_Limitations.md
+!Docs/05_AI_ML_Output_and_Integration_Contract.md
+!Docs/06_AI_ML_Database_Storage_Specification.md
+!Docs/07_AI_ML_Final_Handover.md
+!Docs/Archive/
+!Docs/Archive/**
 
 # Excluded dumps
 project_inventory.txt
 Datasets/*.json
 Datasets/*.jsonl
 Datasets/*.xlsx
-!Docs/M3_Hybrid_Skill_Gap_Detection.md
-!Docs/M3_Personalized_Knowledge_Graph.md
-!Docs/External_Resume_Job_Dataset_Integration.md
-!Docs/AI_ML_Database_Storage_Specification.md
-!Docs/AI_ML_Database_Field_Mapping.md
-!Docs/AI_ML_Limitations_and_Future_Work.md
-!Docs/AI_ML_Final_Handover.md
 
 # External and Large Processed Datasets
 Datasets/External/

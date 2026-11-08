@@ -296,7 +296,7 @@ The backend development team must implement the following operational boundaries
    - Dispatch pipeline execution via Celery, ARQ, or Redis Queue (RQ).
    - Use Server-Sent Events (SSE), WebSockets, or polling endpoints (`GET /api/v1/analyses/{run_id}`) to notify the client of completion.
 3. **Database Transaction Management:**
-   - Store results using the hybrid persistence schema specified in `Docs/AI_ML_Database_Storage_Specification.md`.
+   - Store results using the hybrid persistence schema specified in `Docs/Archive/AI_ML_Database_Storage_Specification.md`.
    - Ensure foreign key associations link `candidate_skills`, `skill_gaps`, and `pipeline_runs` to the specific `run_id`.
    - Wrap persistence operations in database transactions so partial insertion failures roll back cleanly.
 4. **Error Handling & Graceful Degradation:**
@@ -309,7 +309,7 @@ The backend development team must implement the following operational boundaries
 
 Detailed database specifications have been authored and placed in `Docs/`:
 
-1. **[`Docs/AI_ML_Database_Storage_Specification.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Storage_Specification.md):**
+1. **[`Docs/Archive/AI_ML_Database_Storage_Specification.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Database_Storage_Specification.md):**
    - Architectural justification for a **Hybrid Relational + Document (PostgreSQL JSONB)** model.
    - Complete Mermaid Entity-Relationship Diagram (ERD) defining 7 core entities:
      - `candidates` (Candidate identity & contact details)
@@ -320,7 +320,7 @@ Detailed database specifications have been authored and placed in `Docs/`:
      - `skill_gaps` (Missing/matched/partial skills for relational filtering)
      - `learning_roadmaps` (Relational roadmap header with phases)
    - Lifecycle management, indexing strategies, and compliance guidelines.
-2. **[`Docs/AI_ML_Database_Field_Mapping.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Database_Field_Mapping.md):**
+2. **[`Docs/Archive/AI_ML_Database_Field_Mapping.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Database_Field_Mapping.md):**
    - Exact mapping table from every canonical JSON path (e.g., `data.career_readiness.predicted_class`) to proposed PostgreSQL columns and types (`VARCHAR`, `NUMERIC`, `JSONB`).
    - Query examples for dashboard analytics, skill gap filtering, and candidate search.
 
@@ -346,7 +346,7 @@ Before exposing pipeline outputs in production user interfaces, ensure product t
 - [ ] Implement pre-warming singleton hook (`get_pipeline()`) in FastAPI startup lifespan handler.
 - [ ] Implement secure PDF file upload handler with MIME validation and temporary spool storage.
 - [ ] Configure background task queue (Celery/Redis) to execute `process_resume()`.
-- [ ] Implement database migration applying the hybrid relational + JSONB schema from `Docs/AI_ML_Database_Storage_Specification.md`.
+- [ ] Implement database migration applying the hybrid relational + JSONB schema from `Docs/Archive/AI_ML_Database_Storage_Specification.md`.
 - [ ] Implement persistence worker saving `process_resume()` outputs into PostgreSQL.
 - [ ] Implement error handling mapping `pipeline_error.schema.json` codes to client responses.
 

@@ -162,7 +162,7 @@ print("Saved Reports:", result.report_paths)
 json_payload = result.to_json(indent=2)
 ```
 
-For complete backend integration details, schema documentation, and API design guidelines, see [`Docs/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/AI_ML_Pipeline_Integration_Guide.md).
+For complete backend integration details, schema documentation, and API design guidelines, see [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md).
 
 ---
 
