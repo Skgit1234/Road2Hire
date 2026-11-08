@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Road2HireCareerReadinessAnnotationRecord",
+  "description": "Schema for standardized, evidence-grounded human career readiness annotations for Road2Hire M4.3.",
+  "type": "object",
+  "required": [
+    "annotation_id",
+    "pair_id",
+    "candidate_id",
+    "candidate_source",
+    "target_occupation_uri",
+    "target_occupation_title",
+    "readiness_label",
+    "confidence",
+    "evidence",
+    "reviewer_status",
+    "annotator_id",
+    "annotation_timestamp",
+    "annotation_notes"
+  ],
+  "properties": {
+    "annotation_id": {
+      "type": "string",
+      "description": "Unique deterministic identifier for the annotation record, e.g. 'mr_101__software_developer__ann'."
+    },
+    "pair_id": {
+      "type": "string",
+      "description": "Exact pair_id referencing the CandidateOccupationRecord in candidate_occupation_dataset.jsonl."
+    },
+    "candidate_id": {
+      "type": "string",
+      "description": "Originating candidate identifier, e.g. 'mr_101' or '42'."
+    },
+    "candidate_source": {
+      "type": "string",
+      "enum": ["master_resumes", "synthetic_profiles"],
+      "description": "Repository origin of the candidate profile."
+    },
+    "target_occupation_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical ESCO occupation concept URI, e.g. 'http://data.europa.eu/esco/occupation/f2b15a0e-e65a-438a-affb-29b9d50b77d1'."
+    },
+    "target_occupation_title": {
+      "type": "string",
+      "description": "Canonical ESCO occupation preferred label, e.g. 'software developer'."
+    },
+    "readiness_label": {
+      "type": ["string", "null"],
+      "enum": ["Not Ready", "Developing", "Job Ready", null],
+      "description": "The assigned career readiness category for the candidate relative to the target occupation (null when unannotated/Draft)."
+    },
+    "confidence": {
+      "type": ["string", "null"],
+      "enum": ["High", "Medium", "Low", null],
+      "description": "Subjective confidence of the annotator based on the clarity and completeness of candidate evidence (null when unannotated/Draft)."
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Structured evaluation of independent evidence dimensions.",
+      "required": [
+        "essential_skill_proficiency",
+        "work_experience_relevance",
+        "practical_application_evidence",
+        "education_relevance",
+        "key_evidence_summary"
+      ],
+      "properties": {
+        "essential_skill_proficiency": {
+          "type": ["string", "null"],
+          "enum": ["Insufficient", "Foundational", "Proficient", null],
+          "description": "Assessment of candidate's grasp over core essential skills required by the occupation."
+        },
+        "work_experience_relevance": {
+          "type": ["string", "null"],
+          "enum": ["Irrelevant_or_None", "Partial_or_Junior", "Substantial_and_Direct", null],
+          "description": "Relevance, duration, and seniority of prior professional work history."
+        },
+        "practical_application_evidence": {
+          "type": ["string", "null"],
+          "enum": ["None_Observed", "Academic_or_Demo_Projects", "Production_or_EndToEnd_Systems", null],
+          "description": "Direct proof of hands-on skill application in deployed projects or workplace responsibilities."
+        },
+        "education_relevance": {
+          "type": ["string", "null"],
+          "enum": ["Non_Technical", "Related_Degree", "Directly_Aligned_Degree", "Not_Provided", null],
+          "description": "Relevance of academic degree or formal technical education."
+        },
+        "certifications_observed": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of verified or stated industry certifications observed."
+        },
+        "key_evidence_summary": {
+          "type": ["string", "null"],
+          "description": "Factual 1-3 sentence summary detailing the critical evidence that determined the label."
+        },
+        "candidate_profile_summary": {
+          "type": "object",
+          "description": "Factual profile snapshot (skills, work history, projects, degrees) provided to guide the human annotator.",
+          "properties": {
+            "skills": { "type": "array", "items": { "type": "string" } },
+            "experience_summary": { "type": "array", "items": { "type": "string" } },
+            "projects_summary": { "type": "array", "items": { "type": "string" } },
+            "education_summary": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reviewer_status": {
+      "type": "string",
+      "enum": ["Draft", "Reviewed", "Verified", "Disputed", "Flagged_Insufficient_Evidence"],
+      "description": "Audit workflow status for the annotation record."
+    },
+    "annotator_id": {
+      "type": "string",
+      "description": "Unique identifier of the annotator or subject matter expert (empty when Draft)."
+    },
+    "annotation_timestamp": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp of annotation completion (empty when Draft)."
+    },
+    "annotation_notes": {
+      "type": "string",
+      "description": "Reviewer commentary, edge case notes, or reasons for flagging (empty when Draft)."
+    }
+  },
+  "additionalProperties": false
+}
+

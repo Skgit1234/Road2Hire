@@ -1,0 +1,245 @@
+{
+  "sample_count": 4,
+  "passed_checks": 16,
+  "total_checks": 16,
+  "results": [
+    {
+      "id": "KG001",
+      "comparisons": {
+        "direct_matches": {
+          "expected": [
+            "Python"
+          ],
+          "predicted": [
+            "Python"
+          ],
+          "pass": true
+        },
+        "related_matches": {
+          "expected": [
+            "Scikit-learn"
+          ],
+          "predicted": [
+            "Scikit-learn"
+          ],
+          "pass": true
+        },
+        "missing_target_skills": {
+          "expected": [
+            "Machine Learning"
+          ],
+          "predicted": [
+            "Machine Learning"
+          ],
+          "pass": true
+        },
+        "unknown_candidate_skills": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        }
+      },
+      "direct_match_metrics": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "related_match_metrics": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "relationship_evidence": [
+        {
+          "candidate_skill": "Python",
+          "relationship": "requires",
+          "target_skill": "Machine Learning",
+          "direction": "target_to_candidate"
+        },
+        {
+          "candidate_skill": "Scikit-learn",
+          "relationship": "related-to",
+          "target_skill": "Machine Learning",
+          "direction": "target_to_candidate"
+        }
+      ]
+    },
+    {
+      "id": "KG002",
+      "comparisons": {
+        "direct_matches": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        },
+        "related_matches": {
+          "expected": [
+            "NumPy",
+            "Pandas"
+          ],
+          "predicted": [
+            "NumPy",
+            "Pandas"
+          ],
+          "pass": true
+        },
+        "missing_target_skills": {
+          "expected": [
+            "Python"
+          ],
+          "predicted": [
+            "Python"
+          ],
+          "pass": true
+        },
+        "unknown_candidate_skills": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        }
+      },
+      "direct_match_metrics": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "related_match_metrics": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "relationship_evidence": [
+        {
+          "candidate_skill": "NumPy",
+          "relationship": "related-to",
+          "target_skill": "Python",
+          "direction": "target_to_candidate"
+        },
+        {
+          "candidate_skill": "Pandas",
+          "relationship": "related-to",
+          "target_skill": "Python",
+          "direction": "target_to_candidate"
+        }
+      ]
+    },
+    {
+      "id": "KG003",
+      "comparisons": {
+        "direct_matches": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        },
+        "related_matches": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        },
+        "missing_target_skills": {
+          "expected": [
+            "SQL"
+          ],
+          "predicted": [
+            "SQL"
+          ],
+          "pass": true
+        },
+        "unknown_candidate_skills": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        }
+      },
+      "direct_match_metrics": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "related_match_metrics": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "relationship_evidence": []
+    },
+    {
+      "id": "KG004",
+      "comparisons": {
+        "direct_matches": {
+          "expected": [
+            "Python"
+          ],
+          "predicted": [
+            "Python"
+          ],
+          "pass": true
+        },
+        "related_matches": {
+          "expected": [],
+          "predicted": [],
+          "pass": true
+        },
+        "missing_target_skills": {
+          "expected": [
+            "SQL"
+          ],
+          "predicted": [
+            "SQL"
+          ],
+          "pass": true
+        },
+        "unknown_candidate_skills": {
+          "expected": [
+            "Kubernetes"
+          ],
+          "predicted": [
+            "Kubernetes"
+          ],
+          "pass": true
+        }
+      },
+      "direct_match_metrics": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "related_match_metrics": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      "relationship_evidence": []
+    }
+  ],
+  "limitations": [
+    "Evaluation cases are manually specified and small.",
+    "Related skills are not treated as equivalent to required skills.",
+    "NDCG is not calculated because the matcher does not currently rank results.",
+    "Baseline comparisons require running the baseline implementations on the same cases."
+  ]
+}
