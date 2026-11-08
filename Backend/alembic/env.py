@@ -7,7 +7,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from Core.database import Base
-from Models import LearningTask, Resume, SkillGap, User
+from Models import CandidateProfile, LearningTask, Resume, SkillGap, User
 
 config = context.config
 

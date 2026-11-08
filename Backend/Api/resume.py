@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from Core.database import get_db
 from Models.resume import Resume
+from Models.candidate_profile import CandidateProfile
 from Models.user import User
 from Schemas.resume import ResumeUploadResponse
 from Services.file_service import (
@@ -146,6 +147,7 @@ async def upload_resume(
     user_id: int = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     original_name = file.filename or ""
 
@@ -181,13 +183,13 @@ async def upload_resume(
     file_path = None
 
     try:
-        if db.query(User.id).filter(User.id == user_id).first() is None:
-            raise HTTPException(status_code=404, detail="User not found")
+        if user_id != user.id:
+            raise HTTPException(status_code=403, detail="Cannot upload for another user")
 
         stored_name, file_path = save_resume_file(contents)
 
         resume = Resume(
-            user_id=user_id,
+            user_id=user.id,
             original_name=original_name,
             stored_name=stored_name,
             file_path=file_path,
@@ -270,6 +272,30 @@ def analyze_resume(
             )
 
         skill_result = extract_skills(result)
+        sections = result.get("sections") or {}
+
+        def section_items(section_name: str) -> list[str]:
+            section = sections.get(section_name, "")
+            if not isinstance(section, str):
+                return []
+            return [line.strip() for line in section.splitlines() if line.strip()]
+
+        profile = db.query(CandidateProfile).filter(
+            CandidateProfile.user_id == user.id
+        ).first()
+        if profile is None:
+            profile = CandidateProfile(user_id=user.id)
+            db.add(profile)
+
+        profile.resume_id = resume.id
+        profile.skills = skill_result["skills"]
+        profile.education = section_items("education")
+        profile.experience = section_items("experience")
+        profile.projects = section_items("projects")
+        profile.certifications = section_items("certifications")
+
+        db.commit()
+        db.refresh(profile)
 
         return {
             "resume_id": resume.id,
@@ -287,12 +313,22 @@ def analyze_resume(
 
     except HTTPException:
         raise
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Could not save candidate profile for resume %s", resume_id)
+        raise HTTPException(
+            status_code=500,
+            detail="Resume analysis could not be saved",
+        ) from exc
     except (ValueError, TypeError) as exc:
+        db.rollback()
+        logger.exception("Resume analysis failed for resume %s", resume_id)
         raise HTTPException(
             status_code=422,
-            detail=f"Could not analyze this resume: {exc}"
+            detail="Could not analyze this resume"
         ) from exc
     except Exception as exc:
+        db.rollback()
         logger.exception("Resume analysis failed for resume %s", resume_id)
         raise HTTPException(
             status_code=500,

@@ -8,7 +8,9 @@ from jose import jwt, JWTError
 
 from Core.database import get_db
 from Core.security import SECRET_KEY, ALGORITHM
+from Models.candidate_profile import CandidateProfile
 from Models.user import User
+from Schemas.candidate_profile import CandidateProfileResponse
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 bearer = HTTPBearer()
@@ -54,6 +56,28 @@ class ProfileResponse(BaseModel):
 @router.get("", response_model=ProfileResponse)
 def get_profile(user: User = Depends(get_current_user)):
     return user
+
+
+@router.get("/candidate", response_model=CandidateProfileResponse)
+def get_candidate_profile(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        profile = db.query(CandidateProfile).filter(
+            CandidateProfile.user_id == user.id
+        ).first()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not retrieve candidate profile",
+        ) from exc
+
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Candidate profile not found")
+
+    return profile
 
 
 @router.patch("/", response_model=ProfileResponse, include_in_schema=False)
