@@ -1,0 +1,521 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://road2hire.ai/schemas/pipeline_output.v1.json",
+  "title": "Road2HirePipelineOutput",
+  "description": "Standardized canonical JSON output contract for the Road2Hire end-to-end AI/ML Career Readiness pipeline.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "metadata",
+    "candidate_profile",
+    "skills",
+    "occupation_recommendations",
+    "target_occupation",
+    "skill_gap",
+    "readiness",
+    "explanations",
+    "knowledge_graph",
+    "learning_roadmap",
+    "warnings",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Output contract schema version following SemVer (e.g. 1.0.0).",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Pipeline execution metadata, timings, and processing diagnostics.",
+      "required": [
+        "schema_version",
+        "pipeline_version",
+        "status",
+        "timestamp",
+        "source_file",
+        "page_count"
+      ],
+      "properties": {
+        "schema_version": { "type": "string" },
+        "pipeline_version": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["success", "warning", "error"],
+          "description": "Overall processing health status."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 execution timestamp."
+        },
+        "source_file": {
+          "type": "string",
+          "description": "Input resume file path or filename."
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total pages extracted from the resume PDF."
+        },
+        "extraction_status": {
+          "type": "string",
+          "description": "Text extraction result status (e.g. success, needs_ocr)."
+        },
+        "execution_timings_seconds": {
+          "type": "object",
+          "description": "Per-stage and total execution timings in seconds.",
+          "additionalProperties": { "type": "number", "minimum": 0.0 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "candidate_profile": {
+      "type": "object",
+      "description": "Structured candidate profile conforming to Schema v1.1.0.",
+      "required": ["candidate", "education", "experience", "projects", "certifications"],
+      "properties": {
+        "schema_version": { "type": "string" },
+        "source_file": { "type": ["string", "null"] },
+        "candidate": {
+          "type": "object",
+          "properties": {
+            "name": { "type": ["string", "null"] },
+            "email": { "type": ["string", "null"] },
+            "phone": { "type": ["string", "null"] },
+            "location": { "type": ["string", "null"] },
+            "summary": { "type": ["string", "null"] },
+            "raw_contact_information": { "type": ["string", "null"] },
+            "raw_summary": { "type": ["string", "null"] }
+          },
+          "additionalProperties": true
+        },
+        "education": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "degree": { "type": ["string", "null"] },
+              "field_of_study": { "type": ["string", "null"] },
+              "institution": { "type": ["string", "null"] },
+              "start_date": { "type": ["string", "null"] },
+              "end_date": { "type": ["string", "null"] },
+              "score": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "experience": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "job_title": { "type": ["string", "null"] },
+              "organization": { "type": ["string", "null"] },
+              "start_date": { "type": ["string", "null"] },
+              "end_date": { "type": ["string", "null"] },
+              "responsibilities": { "type": "array", "items": { "type": "string" } },
+              "skills_used": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "project_name": { "type": ["string", "null"] },
+              "description": { "type": ["string", "null"] },
+              "technologies": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "certifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": ["string", "null"] },
+              "issuer": { "type": ["string", "null"] },
+              "date": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "skills": {
+      "type": "object",
+      "description": "Extracted text skill mentions and normalized canonical ESCO taxonomy concepts.",
+      "required": ["extracted_skills", "esco_mappings", "extracted_skill_count", "mapped_skill_count"],
+      "properties": {
+        "extracted_skills": {
+          "type": "array",
+          "description": "Raw skill mentions identified via Aho-Corasick Trie matching.",
+          "items": {
+            "type": "object",
+            "required": ["skill", "source_sections"],
+            "properties": {
+              "skill": { "type": "string" },
+              "source_sections": { "type": "array", "items": { "type": "string" } },
+              "occurrences": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "section": { "type": "string" },
+                    "text": { "type": "string" },
+                    "start": { "type": "integer" },
+                    "end": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "esco_mappings": {
+          "type": "array",
+          "description": "Canonical ESCO taxonomy skill mappings.",
+          "items": {
+            "type": "object",
+            "required": ["skill", "ESCO_Skill_Id", "ESCO_Skill_Name"],
+            "properties": {
+              "skill": { "type": "string" },
+              "ESCO_Skill_Id": { "type": "string", "format": "uri" },
+              "ESCO_Skill_Name": { "type": "string" },
+              "ESCO_Skill_Type": { "type": ["string", "null"] },
+              "ESCO_Reuse_Level": { "type": ["string", "null"] },
+              "ESCO_Mapping_Type": { "type": ["string", "null"] },
+              "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+            }
+          }
+        },
+        "extracted_skill_count": { "type": "integer", "minimum": 0 },
+        "mapped_skill_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "occupation_recommendations": {
+      "type": "array",
+      "description": "Ranked occupation recommendations derived from knowledge graph overlap scoring.",
+      "items": {
+        "type": "object",
+        "required": ["occupation_uri", "occupation_label", "score"],
+        "properties": {
+          "occupation_uri": { "type": "string", "format": "uri" },
+          "occupation_label": { "type": "string" },
+          "score": { "type": "integer", "minimum": 0 },
+          "essential_count": { "type": "integer", "minimum": 0 },
+          "optional_count": { "type": "integer", "minimum": 0 },
+          "supporting_skills": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "target_occupation": {
+      "type": ["object", "null"],
+      "description": "Resolved canonical target occupation for skill gap and career readiness analysis.",
+      "properties": {
+        "occupation_uri": { "type": "string", "format": "uri" },
+        "occupation_label": { "type": "string" },
+        "match_score": { "type": "integer", "minimum": 0 },
+        "essential_matched": { "type": "integer", "minimum": 0 },
+        "optional_matched": { "type": "integer", "minimum": 0 },
+        "supporting_skills": { "type": "array", "items": { "type": "string" } },
+        "resolution_source": {
+          "type": "string",
+          "enum": ["suggestion", "direct_uri", "taxonomy_lookup", "top_recommendation"]
+        }
+      },
+      "required": ["occupation_uri", "occupation_label", "resolution_source"]
+    },
+    "skill_gap": {
+      "type": "object",
+      "description": "Hybrid 3-tier skill gap analysis against the target occupation.",
+      "required": [
+        "overall_skill_coverage_score",
+        "essential_skill_coverage_score",
+        "optional_skill_coverage_score",
+        "matched_skills",
+        "partially_matched_skills",
+        "missing_essential_skills",
+        "missing_optional_skills"
+      ],
+      "properties": {
+        "overall_skill_coverage_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Weighted skill coverage (0.75 Essential + 0.25 Optional)."
+        },
+        "essential_skill_coverage_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "optional_skill_coverage_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "matched_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "candidate_skill": { "type": "string" },
+              "occupation_skill": { "type": "string" },
+              "match_tier": { "type": "integer", "enum": [1, 2, 3] },
+              "match_type": { "type": "string" },
+              "credit": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "skill_uri": { "type": "string" },
+              "skill_type": { "type": "string" }
+            }
+          }
+        },
+        "partially_matched_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "candidate_skill": { "type": "string" },
+              "occupation_skill": { "type": "string" },
+              "match_tier": { "type": "integer", "enum": [2, 3] },
+              "match_type": { "type": "string" },
+              "credit": { "type": "number" },
+              "similarity_score": { "type": "number" },
+              "skill_uri": { "type": "string" },
+              "skill_type": { "type": "string" }
+            }
+          }
+        },
+        "missing_essential_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill_uri": { "type": "string" },
+              "skill_label": { "type": "string" },
+              "skill_type": { "type": "string" }
+            }
+          }
+        },
+        "missing_optional_skills": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill_uri": { "type": "string" },
+              "skill_label": { "type": "string" },
+              "skill_type": { "type": "string" }
+            }
+          }
+        },
+        "surplus_candidate_skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unmapped_candidate_skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "readiness": {
+      "type": ["object", "null"],
+      "description": "Supervised career readiness prediction and Out-of-Distribution diagnostics (M4).",
+      "properties": {
+        "predicted_class": {
+          "type": "string",
+          "enum": ["Developing", "Job Ready", "Not Ready"],
+          "description": "Model predicted career readiness category."
+        },
+        "class_probabilities": {
+          "type": "object",
+          "description": "Heuristic model probabilities from multinomial logistic regression (uncalibrated).",
+          "properties": {
+            "Developing": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "Job Ready": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "Not Ready": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          },
+          "required": ["Developing", "Job Ready", "Not Ready"],
+          "additionalProperties": false
+        },
+        "model_version": { "type": "string" },
+        "model_type": { "type": "string" },
+        "feature_values": {
+          "type": "object",
+          "description": "Extracted numerical profile features evaluated by the model.",
+          "additionalProperties": { "type": "number" }
+        },
+        "is_experimental": { "type": "boolean" },
+        "is_ood": {
+          "type": "boolean",
+          "description": "True if candidate profile features deviate beyond empirical training boundaries."
+        },
+        "ood_warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Diagnostic warnings detailing out-of-distribution feature values."
+        },
+        "training_sample_count": { "type": "integer" },
+        "training_class_distribution": { "type": "object" },
+        "feature_diagnostics": { "type": "object" },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["predicted_class", "class_probabilities", "model_version", "model_type", "is_ood", "ood_warnings"]
+    },
+    "explanations": {
+      "type": ["object", "null"],
+      "description": "Exact SHAP local feature attributions and global macro rankings (M4.5).",
+      "properties": {
+        "target_class_explained": { "type": "string" },
+        "base_value": { "type": "number", "description": "Model intercept log-odds." },
+        "top_positive_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": { "type": "string" },
+              "display_name": { "type": "string" },
+              "feature_value": { "type": "number" },
+              "contribution": { "type": "number" },
+              "direction_relative_to_target": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "top_negative_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": { "type": "string" },
+              "display_name": { "type": "string" },
+              "feature_value": { "type": "number" },
+              "contribution": { "type": "number" },
+              "direction_relative_to_target": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "feature_contributions": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "human_readable_summary": { "type": "string" },
+        "waterfall_steps": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "global_importance_ranking": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["target_class_explained", "base_value", "top_positive_factors", "top_negative_factors", "human_readable_summary"]
+    },
+    "knowledge_graph": {
+      "type": "object",
+      "description": "Personalized knowledge graph topology metrics connecting candidate to target role.",
+      "required": ["total_nodes", "total_edges"],
+      "properties": {
+        "total_nodes": { "type": "integer", "minimum": 0 },
+        "total_edges": { "type": "integer", "minimum": 0 },
+        "node_counts_by_kind": { "type": "object" },
+        "edge_counts_by_relation": { "type": "object" },
+        "target_occupation": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "learning_roadmap": {
+      "type": ["object", "null"],
+      "description": "Personalized 4-phase learning roadmap addressing identified skill gaps.",
+      "properties": {
+        "target_occupation_title": { "type": "string" },
+        "target_occupation_uri": { "type": "string", "format": "uri" },
+        "total_roadmap_skills": { "type": "integer", "minimum": 0 },
+        "total_estimated_weeks": { "type": "string" },
+        "phases": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["phase_number", "phase_name", "description", "estimated_weeks", "items"],
+            "properties": {
+              "phase_number": { "type": "integer", "minimum": 1, "maximum": 4 },
+              "phase_name": { "type": "string" },
+              "description": { "type": "string" },
+              "estimated_weeks": { "type": "string" },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["skill_name", "current_status", "priority", "importance_rationale", "learning_outcome", "practical_project"],
+                  "properties": {
+                    "skill_name": { "type": "string" },
+                    "esco_uri": { "type": ["string", "null"] },
+                    "current_status": {
+                      "type": "string",
+                      "enum": ["missing_essential", "partially_matched_essential", "missing_optional"]
+                    },
+                    "priority": {
+                      "type": "string",
+                      "enum": ["Critical", "High", "Medium", "Low"]
+                    },
+                    "importance_rationale": { "type": "string" },
+                    "learning_outcome": { "type": "string" },
+                    "suggested_activities": { "type": "array", "items": { "type": "string" } },
+                    "practical_project": { "type": "string" },
+                    "estimated_duration_weeks": { "type": "string" },
+                    "prerequisites": { "type": "array", "items": { "type": "string" } },
+                    "completion_criteria": { "type": "string" },
+                    "resource_categories": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "disclaimers": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["target_occupation_title", "target_occupation_uri", "total_roadmap_skills", "total_estimated_weeks", "phases", "disclaimers"]
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings or recoverable diagnostic notifications."
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Critical errors encountered during pipeline execution."
+    },
+    "report_paths": {
+      "type": "object",
+      "description": "File paths to persisted JSON and Markdown report artifacts on disk.",
+      "properties": {
+        "json": { "type": "string" },
+        "markdown": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
+

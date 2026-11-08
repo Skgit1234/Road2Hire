@@ -218,3 +218,32 @@ Docs/*
 !Docs/Skill_Taxonomy_Strategy.md
 !Docs/ESCO_ONET_Mapping_Strategy.md
 !Docs/Annotation_Strategy.md
+
+!Docs/Phase_4_Candidate_Profile_Enhancement.md
+
+# Excluded dumps
+project_inventory.txt
+Datasets/*.json
+Datasets/*.jsonl
+Datasets/*.xlsx
+!Docs/M3_Hybrid_Skill_Gap_Detection.md
+!Docs/M3_Personalized_Knowledge_Graph.md
+!Docs/External_Resume_Job_Dataset_Integration.md
+!Docs/AI_ML_Database_Storage_Specification.md
+!Docs/AI_ML_Database_Field_Mapping.md
+!Docs/AI_ML_Limitations_and_Future_Work.md
+!Docs/AI_ML_Final_Handover.md
+
+# External and Large Processed Datasets
+Datasets/External/
+Datasets/Processed/External_Job_Resume_Matching/
+Datasets/Processed/*.xlsx
+
+# Pipeline Outputs & Candidate Reports
+Outputs/
+
+# Personal test resumes & scratch scripts
+Tests/AI/*_Resume*.pdf
+Tests/AI/* - Resume.pdf
+test_resume_pipeline.py
+

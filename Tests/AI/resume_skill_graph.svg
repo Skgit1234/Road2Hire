@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480">
+<rect width="1000" height="480" fill="#f8fafc"/>
+<text x="500" y="38" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold" fill="#172554">Resume Skill Relationship Graph</text>
+<text x="500" y="68" text-anchor="middle" font-family="Arial" font-size="14" fill="#475569">sample_resume.pdf | 5 matched graph skills | 3 related skills</text>
+<defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker></defs>
+<line x1="500" y1="130" x2="180" y2="130" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="340.0" y="122.0" text-anchor="middle" font-family="Arial" font-size="12" fill="#9a3412">requires</text>
+<line x1="180" y1="130" x2="820" y2="130" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="500.0" y="122.0" text-anchor="middle" font-family="Arial" font-size="12" fill="#9a3412">related-to</text>
+<line x1="180" y1="130" x2="180" y2="280" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="180.0" y="197.0" text-anchor="middle" font-family="Arial" font-size="12" fill="#9a3412">related-to</text>
+<rect x="80.0" y="98.0" width="200" height="64" rx="12" fill="#bbf7d0" stroke="#15803d" stroke-width="2"/>
+<text x="180" y="135" text-anchor="middle" font-family="Arial" font-size="15" fill="#14532d">Python</text>
+<rect x="400.0" y="98.0" width="200" height="64" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="500" y="135" text-anchor="middle" font-family="Arial" font-size="15" fill="#1e3a8a">Machine Learning</text>
+<rect x="720.0" y="98.0" width="200" height="64" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="820" y="135" text-anchor="middle" font-family="Arial" font-size="15" fill="#1e3a8a">NumPy</text>
+<rect x="80.0" y="248.0" width="200" height="64" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="180" y="285" text-anchor="middle" font-family="Arial" font-size="15" fill="#1e3a8a">Pandas</text>
+<rect x="25" y="413" width="16" height="16" rx="3" fill="#bbf7d0" stroke="#15803d"/><text x="48" y="425" font-family="Arial" font-size="13" fill="#14532d">Detected in resume</text>
+<rect x="230" y="413" width="16" height="16" rx="3" fill="#dbeafe" stroke="#2563eb"/><text x="253" y="425" font-family="Arial" font-size="13" fill="#1e3a8a">Related skill</text>
+<text x="25" y="455" font-family="Arial" font-size="13" fill="#475569">3 relationships shown, including 5 detected skills and 3 related skills. Relationships come from skill_graph_v1.json.</text>
+</svg>

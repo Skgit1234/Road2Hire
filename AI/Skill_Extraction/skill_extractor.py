@@ -1,8 +1,8 @@
 """Extract skills from processed Road2Hire resume data."""
 
 import json
-import re
 from pathlib import Path
+import re
 from typing import Any
 
 
@@ -31,6 +31,104 @@ SKILL_SYNONYMS = {
     "numpy": "NumPy",
     "pandas": "Pandas",
 }
+
+
+class SkillMatcher:
+    """High-performance trie matcher for case-insensitive whole-phrase skill extraction.
+
+    Matches whole-phrase occurrences matching the regex semantics:
+        (?<!\\w)re.escape(variation)(?!\\w)
+    Executes in O(text_length * avg_phrase_depth) rather than O(vocabulary_size * text_length).
+    """
+
+    def __init__(
+        self,
+        vocabulary: list[str],
+        synonyms: dict[str, str] | None = None,
+    ) -> None:
+        syn = synonyms if synonyms is not None else SKILL_SYNONYMS
+        reverse_synonyms: dict[str, list[str]] = {}
+        for alias, canonical in syn.items():
+            reverse_synonyms.setdefault(canonical.casefold(), []).append(alias)
+
+        self.trie: dict[str, Any] = {}
+        for skill in vocabulary:
+            if not isinstance(skill, str) or not skill.strip():
+                continue
+            canonical_name = skill.strip()
+            variations = [canonical_name]
+            for alias in reverse_synonyms.get(canonical_name.casefold(), []):
+                variations.append(alias)
+
+            for var in dict.fromkeys(variations):
+                curr = self.trie
+                for ch in var.casefold():
+                    curr = curr.setdefault(ch, {})
+                if "__skills__" not in curr:
+                    curr["__skills__"] = []
+                if canonical_name not in curr["__skills__"]:
+                    curr["__skills__"].append(canonical_name)
+
+    def find_in_text(self, text: str) -> dict[str, list[dict[str, Any]]]:
+        """Find whole-phrase occurrences of all registered skills in text.
+
+        Returns
+        -------
+        dict mapping canonical_name to list of occurrence dicts:
+            [{'text': match_text, 'start': start_idx, 'end': end_idx}, ...]
+        """
+        n = len(text)
+        lower = text.casefold()
+        matches: dict[str, list[dict[str, Any]]] = {}
+
+        for start in range(n):
+            # Left boundary check: (?<!\w)
+            if start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
+                continue
+
+            curr = self.trie
+            for end in range(start, n):
+                ch = lower[end]
+                if ch not in curr:
+                    break
+                curr = curr[ch]
+
+                if "__skills__" in curr:
+                    # Right boundary check: (?!\w)
+                    if end + 1 < n and (text[end + 1].isalnum() or text[end + 1] == "_"):
+                        continue
+                    m_text = text[start : end + 1]
+                    for canon in curr["__skills__"]:
+                        matches.setdefault(canon, []).append(
+                            {"text": m_text, "start": start, "end": end + 1}
+                        )
+
+        return matches
+
+
+_MATCHER_CACHE: dict[Any, SkillMatcher] = {}
+
+
+def _get_vocab_cache_key(vocabulary: list[str]) -> Any:
+    """Generate a cache key for vocabulary lists."""
+    if len(vocabulary) > 500:
+        return (len(vocabulary), vocabulary[0], vocabulary[len(vocabulary) // 2], vocabulary[-1])
+    return id(vocabulary)
+
+
+def get_skill_matcher(
+    vocabulary: list[str],
+    synonyms: dict[str, str] | None = None,
+) -> SkillMatcher:
+    """Retrieve or build a cached SkillMatcher instance."""
+    key = _get_vocab_cache_key(vocabulary)
+    matcher = _MATCHER_CACHE.get(key)
+    if matcher is None:
+        matcher = SkillMatcher(vocabulary, synonyms=synonyms)
+        if len(_MATCHER_CACHE) > 16:
+            _MATCHER_CACHE.clear()
+        _MATCHER_CACHE[key] = matcher
+    return matcher
 
 
 def normalize_skill_name(
@@ -75,6 +173,17 @@ def load_skill_vocabulary(
         and isinstance(item.get("name"), str)
         and item["name"].strip()
     ]
+
+
+def load_esco_skill_vocabulary(
+    taxonomy: Any = None,
+    include_alt_labels: bool = False,
+) -> list[str]:
+    """Load the complete ESCO skill vocabulary (13,939 unique skills)."""
+    from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
+
+    tax = taxonomy if taxonomy is not None else get_esco_taxonomy()
+    return tax.get_vocabulary(include_alt_labels=include_alt_labels)
 
 
 def _find_skill_occurrences(
@@ -130,6 +239,7 @@ def extract_skills(
     if vocabulary is None:
         vocabulary = load_skill_vocabulary()
 
+    matcher = get_skill_matcher(vocabulary)
     extracted: dict[str, dict[str, Any]] = {}
 
     for section_name, section_text in sections.items():
@@ -139,18 +249,8 @@ def extract_skills(
         if not isinstance(section_text, str):
             continue
 
-        for skill in vocabulary:
-            if not isinstance(skill, str) or not skill.strip():
-                continue
-
-            canonical_name = skill.strip()
-            occurrences = []
-
-            for variation in _get_skill_variations(canonical_name):
-                occurrences.extend(
-                    _find_skill_occurrences(section_text, variation)
-                )
-
+        sec_matches = matcher.find_in_text(section_text)
+        for canonical_name, occurrences in sec_matches.items():
             if not occurrences:
                 continue
 
@@ -159,7 +259,7 @@ def extract_skills(
                 (item["start"], item["end"]): item
                 for item in occurrences
             }
-            occurrences = [
+            sorted_occurrences = [
                 unique_occurrences[position]
                 for position in sorted(unique_occurrences)
             ]
@@ -176,7 +276,7 @@ def extract_skills(
             if section_name not in extracted[key]["source_sections"]:
                 extracted[key]["source_sections"].append(section_name)
 
-            for occurrence in occurrences:
+            for occurrence in sorted_occurrences:
                 extracted[key]["occurrences"].append({
                     "section": section_name,
                     **occurrence,
