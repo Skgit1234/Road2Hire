@@ -1,236 +1,366 @@
-
-import hashlib
-import json
 import logging
-import sys
-from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from AI.Baseline.keyword_baseline import keyword_match
-from AI.Resume_Processing.resume_pipeline import process_resume
-from AI.Skill_Extraction.skill_extractor import extract_skills
 from Api.profile import get_current_user
 from Core.database import get_db
+from Models.pipeline_run import PipelineRun
 from Models.resume import Resume
-from Models.skill_gap import SkillGap
+from Models.user import User
+from Schemas.skill_gap import (
+    KnowledgeGraphResponse,
+    PipelineRunResultResponse,
+    SkillGapAnalysisRequest,
+    SkillGapAnalysisResponse,
+    SkillGapHistoryItem,
+    SkillGapHistoryResponse,
+    SkillPriorityResponse,
+)
+from Services.pipeline_service import (
+    ResumeFileValidationError,
+    ResumeOwnershipError,
+    run_pipeline_for_resume,
+)
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/skill-gaps", tags=["Skill Gaps"])
 
 
-@router.get("/history")
+@router.post("/analyze", response_model=SkillGapAnalysisResponse)
+def analyze_skill_gap(
+    details: SkillGapAnalysisRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return _analyze_for_resume(
+        db=db,
+        user=user,
+        resume_id=details.resume_id,
+        target_occupation=details.target_occupation,
+        auto_select_top_occupation=details.auto_select_top_occupation,
+    )
+
+
+@router.get("/", response_model=SkillGapAnalysisResponse)
+def get_skill_gaps(
+    resume_id: int = Query(..., gt=0),
+    target_role: str = Query(..., min_length=1, max_length=512),
+    required_skills: list[str] | None = Query(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    target_role = target_role.strip()
+    if not target_role:
+        raise HTTPException(status_code=422, detail="Target role cannot be blank")
+
+    warnings = []
+    if required_skills:
+        warnings.append(
+            "Custom required_skills are stored with jobs but are not independently "
+            "evaluated by the unified pipeline; results use ESCO occupation requirements."
+        )
+    return _analyze_for_resume(
+        db=db,
+        user=user,
+        resume_id=resume_id,
+        target_occupation=target_role,
+        auto_select_top_occupation=False,
+        warnings=warnings,
+    )
+
+
+@router.get("/history", response_model=SkillGapHistoryResponse)
 def get_skill_gap_history(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    query = db.query(SkillGap).filter(
-        SkillGap.user_id == current_user.id
-    )
-
+    query = db.query(PipelineRun).filter(PipelineRun.user_id == user.id)
     total = query.count()
-
-    items = (
-        query.order_by(SkillGap.created_at.desc())
+    runs = (
+        query.order_by(PipelineRun.created_at.desc(), PipelineRun.id.desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
-
-    return {
-        "items": [
-            {
-                "id": item.id,
-                "resume_id": item.resume_id,
-                "target_role": item.target_role,
-                "required_skills": item.required_skills,
-                "matched_skills": item.matched_skills,
-                "missing_skills": item.missing_skills,
-                "match_score": item.match_score,
-                "created_at": item.created_at,
-            }
-            for item in items
-        ],
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+    return SkillGapHistoryResponse(
+        items=[_history_item(run) for run in runs],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.get("/history/{analysis_id}")
+@router.get("/history/{analysis_id}", response_model=SkillGapAnalysisResponse)
 def get_skill_gap_history_item(
     analysis_id: int,
-    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    item = (
-        db.query(SkillGap)
-        .filter(
-            SkillGap.id == analysis_id,
-            SkillGap.user_id == current_user.id,
-        )
-        .first()
+    run = _owned_run(db, analysis_id, user.id)
+    return _analysis_response(run)
+
+
+@router.get("/runs/{run_id}", response_model=PipelineRunResultResponse)
+def get_pipeline_run_result(
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    run = _owned_run(db, run_id, user.id)
+    error = None
+    if run.status == "failed":
+        error = {
+            "code": run.error_code,
+            "stage": run.error_stage,
+            "message": run.error_message,
+        }
+    return PipelineRunResultResponse(
+        pipeline_run_id=run.id,
+        status=run.status,
+        resume_id=run.resume_id,
+        canonical_output=_canonical(run),
+        error=error,
     )
 
-    if not item:
-        raise HTTPException(
-            status_code=404,
-            detail="Skill gap analysis not found",
-        )
 
-    return {
-        "id": item.id,
-        "resume_id": item.resume_id,
-        "target_role": item.target_role,
-        "required_skills": item.required_skills,
-        "matched_skills": item.matched_skills,
-        "missing_skills": item.missing_skills,
-        "match_score": item.match_score,
-        "created_at": item.created_at,
-    }
+@router.get("/runs/{run_id}/priorities", response_model=SkillPriorityResponse)
+def get_run_skill_priorities(
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    run = _owned_run(db, run_id, user.id)
+    canonical = _canonical(run)
+    roadmap = canonical.get("learning_roadmap")
+    target = canonical.get("target_occupation")
+    items: list[dict[str, Any]] = []
+    if isinstance(roadmap, dict):
+        phases = roadmap.get("phases")
+        if isinstance(phases, list):
+            for phase in phases:
+                if not isinstance(phase, dict):
+                    continue
+                phase_items = phase.get("items")
+                if not isinstance(phase_items, list):
+                    continue
+                for item in phase_items:
+                    if isinstance(item, dict):
+                        items.append(
+                            {
+                                **item,
+                                "phase_number": phase.get("phase_number"),
+                                "phase_name": phase.get("phase_name"),
+                            }
+                        )
+    return SkillPriorityResponse(
+        pipeline_run_id=run.id,
+        target_occupation=target if isinstance(target, dict) else None,
+        items=items,
+    )
 
-@router.get("/")
-def get_skill_gaps(
+
+@router.get("/runs/{run_id}/knowledge-graph", response_model=KnowledgeGraphResponse)
+def get_run_knowledge_graph(
+    run_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    run = _owned_run(db, run_id, user.id)
+    canonical = _canonical(run)
+    graph_summary = canonical.get("knowledge_graph")
+    if not isinstance(graph_summary, dict):
+        graph_summary = {}
+    gap = canonical.get("skill_gap")
+    if not isinstance(gap, dict):
+        gap = {}
+    nodes, relationships = _skill_graph_view(gap)
+    return KnowledgeGraphResponse(
+        pipeline_run_id=run.id,
+        summary=graph_summary,
+        nodes=nodes,
+        relationships=relationships,
+        scope=(
+            "Skill-match relationships are derived from canonical matched and "
+            "partially matched evidence; the canonical pipeline output stores "
+            "graph summary metrics rather than the complete graph topology."
+        ),
+    )
+
+
+def _analyze_for_resume(
+    *,
+    db: Session,
+    user: User,
     resume_id: int,
-    target_role: str,
-    required_skills: list[str] = Query(..., min_length=1),
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    target_role = target_role.strip()
-    required_skills = sorted({
-        skill.strip()
-        for skill in required_skills
-        if skill.strip()
-    }, key=str.casefold)
-
-    if not target_role or not required_skills:
-        raise HTTPException(
-            status_code=422,
-            detail="Target role and required skills cannot be empty.",
-        )
-
-    resume = (
-        db.query(Resume)
-        .filter(
-            Resume.id == resume_id,
-            Resume.user_id == current_user.id,
-        )
-        .first()
-    )
-
-    if not resume:
+    target_occupation: str | None,
+    auto_select_top_occupation: bool,
+    warnings: list[str] | None = None,
+) -> SkillGapAnalysisResponse:
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == user.id,
+    ).first()
+    if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    file_path = Path(resume.file_path)
-
-    if not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Resume file not found")
+    user_ref = User(id=user.id)
+    resume_ref = Resume(id=resume.id, user_id=resume.user_id)
+    db.rollback()
 
     try:
-        # Hash the resume contents and analysis inputs.
-        # Changed resume contents or requirements produce a new analysis.
-        resume_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
-        cache_data = json.dumps(
-            {
-                "resume_hash": resume_hash,
-                "target_role": target_role.casefold(),
-                "required_skills": [
-                    skill.casefold() for skill in required_skills
-                ],
-            },
-            sort_keys=True,
+        run = run_pipeline_for_resume(
+            user=user_ref,
+            resume=resume_ref,
+            target_occupation=target_occupation,
+            auto_select_top_occupation=auto_select_top_occupation,
         )
-        analysis_hash = hashlib.sha256(
-            cache_data.encode("utf-8")
-        ).hexdigest()
-
-        # Reuse an existing analysis if its inputs have not changed.
-        saved = (
-            db.query(SkillGap)
-            .filter(
-                SkillGap.resume_id == resume.id,
-                SkillGap.user_id == current_user.id,
-                SkillGap.requirements_hash == analysis_hash,
-            )
-            .first()
-        )
-
-        if saved:
-            return {
-                "id": saved.id,
-                "resume_id": saved.resume_id,
-                "target_role": saved.target_role,
-                "required_skills": saved.required_skills,
-                "matched_skills": saved.matched_skills,
-                "missing_skills": saved.missing_skills,
-                "match_score": saved.match_score,
-                "created_at": saved.created_at,
-                "cached": True,
-            }
-
-        # Calculate only when no matching saved result exists.
-        resume_data = process_resume(str(file_path))
-
-        if resume_data.get("extraction_status") == "needs_ocr":
-            raise HTTPException(
-                status_code=422,
-                detail="This resume requires OCR before analysis.",
-            )
-
-        extracted = extract_skills(resume_data)
-        candidate_skills = [
-            item["skill"] for item in extracted["skills"]
-        ]
-
-        result = keyword_match(candidate_skills, required_skills)
-
-        matched = result["present_skills"]
-        missing = result["missing_skills"]
-
-        # The existing endpoint converts the matcher score to a percentage.
-        score = round(result["match_score"] * 100, 2)
-
-        saved = SkillGap(
-            user_id=current_user.id,
-            resume_id=resume.id,
-            target_role=target_role,
-            requirements_hash=analysis_hash,
-            required_skills=required_skills,
-            matched_skills=matched,
-            missing_skills=missing,
-            match_score=score,
-        )
-
-        db.add(saved)
-        db.commit()
-        db.refresh(saved)
-
-        return {
-            "id": saved.id,
-            "resume_id": saved.resume_id,
-            "target_role": saved.target_role,
-            "required_skills": saved.required_skills,
-            "matched_skills": saved.matched_skills,
-            "missing_skills": saved.missing_skills,
-            "match_score": saved.match_score,
-            "created_at": saved.created_at,
-            "cached": False,
-        }
-
-    except HTTPException:
-        raise
+    except ResumeOwnershipError as exc:
+        raise HTTPException(status_code=404, detail="Resume not found") from exc
+    except ResumeFileValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        db.rollback()
-        logger.exception("Skill gap analysis failed")
+        logger.exception("Could not run skill-gap analysis for resume %s", resume_id)
         raise HTTPException(
             status_code=500,
-            detail="Skill gap analysis failed.",
+            detail="Could not run skill-gap analysis",
         ) from exc
+
+    return _analysis_response(run, warnings=warnings)
+
+
+def _owned_run(db: Session, run_id: int, user_id: int) -> PipelineRun:
+    run = db.query(PipelineRun).filter(
+        PipelineRun.id == run_id,
+        PipelineRun.user_id == user_id,
+    ).first()
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    return run
+
+
+def _analysis_response(
+    run: PipelineRun,
+    *,
+    warnings: list[str] | None = None,
+) -> SkillGapAnalysisResponse:
+    canonical = _canonical(run)
+    target = canonical.get("target_occupation")
+    gap = canonical.get("skill_gap")
+    roadmap = canonical.get("learning_roadmap")
+    graph = canonical.get("knowledge_graph")
+    error = None
+    if run.status == "failed":
+        error = {
+            "code": run.error_code,
+            "stage": run.error_stage,
+            "message": run.error_message,
+        }
+    return SkillGapAnalysisResponse(
+        pipeline_run_id=run.id,
+        status=run.status,
+        matching_basis="Unified AI pipeline skill matching against ESCO occupation requirements.",
+        warnings=warnings or [],
+        target_occupation=target if isinstance(target, dict) else None,
+        skill_gap=gap if isinstance(gap, dict) else None,
+        learning_roadmap=roadmap if isinstance(roadmap, dict) else None,
+        knowledge_graph=graph if isinstance(graph, dict) else None,
+        error=error,
+    )
+
+
+def _history_item(run: PipelineRun) -> SkillGapHistoryItem:
+    return SkillGapHistoryItem(
+        id=run.id,
+        resume_id=run.resume_id,
+        status=run.status,
+        target_occupation_uri=run.target_occupation_uri,
+        target_occupation_title=run.target_occupation_title,
+        overall_skill_coverage_score=run.overall_skill_coverage_score,
+        essential_skill_coverage_score=run.essential_skill_coverage_score,
+        optional_skill_coverage_score=run.optional_skill_coverage_score,
+        readiness_class=run.readiness_class,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+    )
+
+
+def _canonical(run: PipelineRun) -> dict[str, Any]:
+    return run.canonical_output if isinstance(run.canonical_output, dict) else {}
+
+
+def _skill_graph_view(
+    gap: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    nodes: dict[str, dict[str, Any]] = {}
+    relationships: list[dict[str, Any]] = []
+
+    for field, relationship_type in (
+        ("matched_skills", "matches_skill"),
+        ("partially_matched_skills", "partially_matches_skill"),
+    ):
+        evidence = gap.get(field)
+        if not isinstance(evidence, list):
+            continue
+        for item in evidence:
+            if not isinstance(item, dict):
+                continue
+            candidate = item.get("candidate_skill")
+            target = item.get("target_skill")
+            candidate_uri = item.get("candidate_uri")
+            target_uri = item.get("target_uri")
+            if not isinstance(candidate, str) or not isinstance(target, str):
+                continue
+            source_id = candidate_uri or f"candidate-skill:{candidate.casefold()}"
+            target_id = target_uri or f"esco-skill:{target.casefold()}"
+            nodes[source_id] = {
+                "id": source_id,
+                "label": candidate,
+                "kind": "candidate_skill",
+            }
+            nodes[target_id] = {
+                "id": target_id,
+                "label": target,
+                "kind": "esco_skill",
+            }
+            relationships.append(
+                {
+                    "source": source_id,
+                    "target": target_id,
+                    "type": relationship_type,
+                    "tier": item.get("tier"),
+                    "graph_relationship": item.get("graph_relationship"),
+                    "credit_assigned": item.get("credit_assigned"),
+                    "similarity_score": item.get("similarity_score"),
+                    "explanation": item.get("explanation"),
+                }
+            )
+
+    for field, requirement_type in (
+        ("missing_essential_skills", "essential"),
+        ("missing_optional_skills", "optional"),
+    ):
+        missing = gap.get(field)
+        if not isinstance(missing, list):
+            continue
+        for item in missing:
+            if not isinstance(item, dict):
+                continue
+            label = item.get("skill_label")
+            uri = item.get("skill_uri")
+            if not isinstance(label, str):
+                continue
+            node_id = uri or f"esco-skill:{label.casefold()}"
+            nodes[node_id] = {
+                "id": node_id,
+                "label": label,
+                "kind": "esco_skill",
+                "gap_status": "missing",
+                "requirement_type": requirement_type,
+            }
+
+    return list(nodes.values()), relationships

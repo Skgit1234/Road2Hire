@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 
 from Api.profile import get_current_user
 from Core.database import get_db
-from Models.resume import Resume
 from Models.learning_task import LearningTask
-from Models.skill_gap import SkillGap
+from Models.pipeline_run import PipelineRun
+from Models.resume import Resume
 from Models.user import User
 
 
@@ -21,11 +21,16 @@ def get_dashboard(
     resume_count = db.query(func.count(Resume.id)).filter(
         Resume.user_id == user.id
     ).scalar()
-    skill_gap_count = db.query(func.count(SkillGap.id)).filter(
-        SkillGap.user_id == user.id
-    ).scalar()
-    average_match_score = db.query(func.avg(SkillGap.match_score)).filter(
-        SkillGap.user_id == user.id
+    completed_runs = db.query(PipelineRun).filter(
+        PipelineRun.user_id == user.id,
+        PipelineRun.status == "completed",
+    )
+    skill_gap_count = completed_runs.count()
+    average_match_score = db.query(
+        func.avg(PipelineRun.overall_skill_coverage_score)
+    ).filter(
+        PipelineRun.user_id == user.id,
+        PipelineRun.status == "completed",
     ).scalar()
     latest_resume = (
         db.query(Resume)
@@ -34,9 +39,8 @@ def get_dashboard(
         .first()
     )
     latest_skill_gap = (
-        db.query(SkillGap)
-        .filter(SkillGap.user_id == user.id)
-        .order_by(SkillGap.created_at.desc(), SkillGap.id.desc())
+        completed_runs
+        .order_by(PipelineRun.created_at.desc(), PipelineRun.id.desc())
         .first()
     )
 
@@ -44,7 +48,7 @@ def get_dashboard(
         "resume_count": resume_count or 0,
         "skill_gap_count": skill_gap_count or 0,
         "average_match_score": (
-            round(float(average_match_score), 2)
+            round(float(average_match_score) * 100, 2)
             if average_match_score is not None
             else None
         ),
@@ -61,8 +65,12 @@ def get_dashboard(
             {
                 "id": latest_skill_gap.id,
                 "resume_id": latest_skill_gap.resume_id,
-                "target_role": latest_skill_gap.target_role,
-                "match_score": latest_skill_gap.match_score,
+                "target_role": latest_skill_gap.target_occupation_title,
+                "match_score": (
+                    round(latest_skill_gap.overall_skill_coverage_score * 100, 2)
+                    if latest_skill_gap.overall_skill_coverage_score is not None
+                    else None
+                ),
                 "created_at": latest_skill_gap.created_at,
             }
             if latest_skill_gap
@@ -84,10 +92,10 @@ def get_recent_activity(
         .limit(limit)
         .all()
     )
-    skill_gaps = (
-        db.query(SkillGap)
-        .filter(SkillGap.user_id == user.id)
-        .order_by(SkillGap.created_at.desc(), SkillGap.id.desc())
+    pipeline_runs = (
+        db.query(PipelineRun)
+        .filter(PipelineRun.user_id == user.id)
+        .order_by(PipelineRun.created_at.desc(), PipelineRun.id.desc())
         .limit(limit)
         .all()
     )
@@ -107,15 +115,21 @@ def get_recent_activity(
             "id": analysis.id,
             "timestamp": analysis.created_at,
             "resume_id": analysis.resume_id,
-            "target_role": analysis.target_role,
-            "match_score": analysis.match_score,
+            "target_role": analysis.target_occupation_title,
+            "match_score": (
+                round(analysis.overall_skill_coverage_score * 100, 2)
+                if analysis.overall_skill_coverage_score is not None
+                else None
+            ),
+            "status": analysis.status,
         }
-        for analysis in skill_gaps
+        for analysis in pipeline_runs
     )
     progressed_tasks = (
         db.query(LearningTask)
+        .join(PipelineRun, LearningTask.pipeline_run_id == PipelineRun.id)
         .filter(
-            LearningTask.user_id == user.id,
+            PipelineRun.user_id == user.id,
             or_(
                 LearningTask.progress > 0,
                 LearningTask.status != "not_started",
@@ -130,7 +144,7 @@ def get_recent_activity(
             "type": "task_progress_updated",
             "id": task.id,
             "timestamp": task.updated_at,
-            "skill_gap_id": task.skill_gap_id,
+            "pipeline_run_id": task.pipeline_run_id,
             "skill_name": task.skill_name,
             "status": task.status,
             "progress": task.progress,
