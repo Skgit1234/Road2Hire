@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const navigation = [
   { name: "Dashboard", href: "/" },
@@ -11,6 +12,7 @@ const navigation = [
   { name: "Career Readiness", href: "/career-readiness" },
   { name: "Learning Roadmap", href: "/learning-roadmap" },
   { name: "AI Career Assistant", href: "/career-assistant" },
+  { name: "Sign in", href: "/login" },
 ];
 
 const secondaryNavigation = [
@@ -115,6 +117,7 @@ function NavIcon({ name, active = false }: { name: string; active?: boolean }) {
 }
 
 export default function Sidebar() {
+  const { session, signOut } = useAuth();
   const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -265,7 +268,7 @@ export default function Sidebar() {
                     >
                       <NavIcon name={item.name} active={active} />
                     </span>
-                    <span>{item.name}</span>
+                    <span>{item.name === "Sign in" && session ? "Account" : item.name}</span>
                     {item.name === "AI Career Assistant" ? (
                       <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                         New
@@ -306,11 +309,24 @@ export default function Sidebar() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-white">Arjun Mehta</p>
+                  <p className="truncate text-sm font-semibold text-white">
+                    {session?.profile.name ?? "Arjun Mehta"}
+                  </p>
                 </div>
-                <p className="truncate text-[11px] text-slate-300">Frontend Developer</p>
+                <p className="truncate text-[11px] text-slate-300">
+                  {session?.profile.email ?? "Frontend Developer"}
+                </p>
               </div>
             </div>
+            {session && (
+              <button
+                type="button"
+                onClick={signOut}
+                className="mt-2 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
+                Sign out
+              </button>
+            )}
 
             <div className="mt-3 rounded-xl bg-slate-800/70 p-3">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Upgrade to Pro</p>

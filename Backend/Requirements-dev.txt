@@ -1,0 +1,5 @@
+# Test-only dependencies; install this manifest instead of Requirements.txt to run tests.
+-r Requirements.txt
+pytest
+httpx2>=2.0.0
+httpx>=0.27,<0.29

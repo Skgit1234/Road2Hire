@@ -33,6 +33,141 @@ SKILL_SYNONYMS = {
 }
 
 
+
+
+class SkillMatcher:
+    """Trie-based, case-insensitive whole-phrase skill matcher."""
+
+    def __init__(
+        self,
+        vocabulary: list[str],
+        synonyms: dict[str, str] | None = None,
+    ) -> None:
+        synonym_map = synonyms if synonyms is not None else SKILL_SYNONYMS
+        reverse_synonyms: dict[str, list[str]] = {}
+
+        for alias, canonical in synonym_map.items():
+            if isinstance(alias, str) and isinstance(canonical, str):
+                reverse_synonyms.setdefault(canonical.casefold(), []).append(alias)
+
+        self.trie: dict[str, Any] = {}
+
+        for skill in vocabulary:
+            if not isinstance(skill, str) or not skill.strip():
+                continue
+
+            canonical_name = skill.strip()
+            variations = [canonical_name]
+            variations.extend(
+                reverse_synonyms.get(canonical_name.casefold(), [])
+            )
+
+            for variation in dict.fromkeys(variations):
+                node = self.trie
+
+                for character in variation.casefold():
+                    node = node.setdefault(character, {})
+
+                registered = node.setdefault("__skills__", [])
+                if canonical_name not in registered:
+                    registered.append(canonical_name)
+
+    @staticmethod
+    def _is_word_character(character: str) -> bool:
+        return character == "_" or character.isalnum()
+
+    def find_in_text(self, text: str) -> dict[str, list[dict[str, Any]]]:
+        """Find skill occurrences while retaining original text offsets."""
+        matches: dict[str, list[dict[str, Any]]] = {}
+        text_length = len(text)
+
+        for start in range(text_length):
+            if (
+                start > 0
+                and self._is_word_character(text[start - 1])
+            ):
+                continue
+
+            node = self.trie
+
+            for end in range(start, text_length):
+                folded_character = text[end].casefold()
+                failed = False
+
+                # Consume a complete original character before checking
+                # terminal matches, preserving original string offsets.
+                for folded_part in folded_character:
+                    if folded_part not in node:
+                        failed = True
+                        break
+                    node = node[folded_part]
+
+                if failed:
+                    break
+
+                if "__skills__" not in node:
+                    continue
+
+                if (
+                    end + 1 < text_length
+                    and self._is_word_character(text[end + 1])
+                ):
+                    continue
+
+                occurrence = {
+                    "text": text[start:end + 1],
+                    "start": start,
+                    "end": end + 1,
+                }
+
+                for canonical_name in node["__skills__"]:
+                    matches.setdefault(canonical_name, []).append(
+                        occurrence.copy()
+                    )
+
+        return matches
+
+
+_MATCHER_CACHE: dict[
+    tuple[tuple[str, ...], tuple[tuple[str, str], ...]],
+    SkillMatcher,
+] = {}
+
+
+def get_skill_matcher(
+    vocabulary: list[str],
+    synonyms: dict[str, str] | None = None,
+) -> SkillMatcher:
+    """Return a cached matcher keyed by complete vocabulary contents."""
+    valid_vocabulary = tuple(
+        name.strip()
+        for name in vocabulary
+        if isinstance(name, str) and name.strip()
+    )
+
+    synonym_map = synonyms if synonyms is not None else SKILL_SYNONYMS
+    synonym_key = tuple(sorted(
+        (alias.casefold(), canonical)
+        for alias, canonical in synonym_map.items()
+        if isinstance(alias, str) and isinstance(canonical, str)
+    ))
+
+    cache_key = (valid_vocabulary, synonym_key)
+    matcher = _MATCHER_CACHE.get(cache_key)
+
+    if matcher is None:
+        matcher = SkillMatcher(
+            list(valid_vocabulary),
+            synonyms=synonym_map,
+        )
+
+        if len(_MATCHER_CACHE) >= 16:
+            _MATCHER_CACHE.clear()
+
+        _MATCHER_CACHE[cache_key] = matcher
+
+    return matcher
+
 def normalize_skill_name(
     skill_name: str,
     vocabulary: list[str] | None = None,
@@ -130,6 +265,7 @@ def extract_skills(
     if vocabulary is None:
         vocabulary = load_skill_vocabulary()
 
+    matcher = get_skill_matcher(vocabulary)
     extracted: dict[str, dict[str, Any]] = {}
 
     for section_name, section_text in sections.items():
@@ -139,27 +275,18 @@ def extract_skills(
         if not isinstance(section_text, str):
             continue
 
-        for skill in vocabulary:
-            if not isinstance(skill, str) or not skill.strip():
-                continue
+        section_matches = matcher.find_in_text(section_text)
 
-            canonical_name = skill.strip()
-            occurrences = []
-
-            for variation in _get_skill_variations(canonical_name):
-                occurrences.extend(
-                    _find_skill_occurrences(section_text, variation)
-                )
-
+        for canonical_name, occurrences in section_matches.items():
             if not occurrences:
                 continue
 
-            # Sort by text position and remove duplicate spans.
             unique_occurrences = {
                 (item["start"], item["end"]): item
                 for item in occurrences
             }
-            occurrences = [
+
+            sorted_occurrences = [
                 unique_occurrences[position]
                 for position in sorted(unique_occurrences)
             ]
@@ -176,7 +303,7 @@ def extract_skills(
             if section_name not in extracted[key]["source_sections"]:
                 extracted[key]["source_sections"].append(section_name)
 
-            for occurrence in occurrences:
+            for occurrence in sorted_occurrences:
                 extracted[key]["occurrences"].append({
                     "section": section_name,
                     **occurrence,
@@ -188,3 +315,14 @@ def extract_skills(
         "skills": list(extracted.values()),
         "skill_count": len(extracted),
     }
+
+
+def load_esco_skill_vocabulary(
+    taxonomy=None,
+    include_alt_labels: bool = False,
+) -> list[str]:
+    """Load the complete vocabulary from the ESCO taxonomy."""
+    from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
+
+    tax = taxonomy if taxonomy is not None else get_esco_taxonomy()
+    return tax.get_vocabulary(include_alt_labels=include_alt_labels)

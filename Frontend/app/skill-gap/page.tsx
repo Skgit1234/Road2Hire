@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { type SkillPriority } from "../data/sample-data";
 import { useCandidateProfile } from "@/components/profile/CandidateProfileProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { listResumes, type ResumeRecord } from "@/lib/api-client";
+import { analyzeSkillGap } from "@/lib/pipeline-api";
+import type { SkillGapAnalysisResponse } from "@/lib/pipeline-types";
 
 type PriorityFilter = "All" | SkillPriority;
 
@@ -31,6 +35,306 @@ const priorityStyles: Record<SkillPriority, string> = {
   Low: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getStringField(value: unknown, key: string): string | null {
+  const record = getRecord(value);
+  return typeof record?.[key] === "string" ? record[key] as string : null;
+}
+
+function getRecordArray(value: unknown, key: string): Record<string, unknown>[] {
+  const record = getRecord(value);
+  const items = record?.[key];
+  return Array.isArray(items)
+    ? items.filter((item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null && !Array.isArray(item))
+    : [];
+}
+
+function getSkillLabel(item: Record<string, unknown>): string {
+  const candidate = typeof item.candidate_skill === "string" ? item.candidate_skill : null;
+  const target = typeof item.target_skill === "string" ? item.target_skill : null;
+  const label = typeof item.skill_label === "string" ? item.skill_label : null;
+
+  if (candidate && target && candidate !== target) return `${candidate} â†’ ${target}`;
+  return candidate ?? target ?? label ?? "Skill detail unavailable";
+}
+
+function LiveSkillGapAnalysis() {
+  const { session } = useAuth();
+  const [resumes, setResumes] = useState<ResumeRecord[]>([]);
+  const [resumeState, setResumeState] = useState<"loading" | "ready" | "error">("loading");
+  const [resumeError, setResumeError] = useState("");
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+  const [targetRole, setTargetRole] = useState("");
+  const [autoSelectOccupation, setAutoSelectOccupation] = useState(false);
+  const [requestState, setRequestState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [result, setResult] = useState<SkillGapAnalysisResponse | null>(null);
+  const [requestError, setRequestError] = useState("");
+  const [validationError, setValidationError] = useState("");
+
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined;
+        setResumeState("loading");
+        return listResumes(session.accessToken);
+      })
+      .then((items) => {
+        if (active && items) {
+          setResumes(items);
+          setResumeState("ready");
+          setResumeError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setResumeState("error");
+          setResumeError(error instanceof Error ? error.message : "Could not load saved resumes.");
+        }
+      });
+
+    return () => { active = false; };
+  }, [session]);
+
+  function clearResult() {
+    setResult(null);
+    setRequestError("");
+    setValidationError("");
+    setRequestState("idle");
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setValidationError("");
+    setRequestError("");
+    setResult(null);
+
+    if (!selectedResumeId) {
+      setValidationError("Choose one of your saved resumes.");
+      return;
+    }
+
+    if (!autoSelectOccupation && !targetRole.trim()) {
+      setValidationError("Enter a target occupation or enable automatic occupation selection.");
+      return;
+    }
+
+    if (!session) return;
+
+    setRequestState("loading");
+
+    try {
+      const details = autoSelectOccupation
+        ? { resume_id: Number(selectedResumeId), auto_select_top_occupation: true }
+        : { resume_id: Number(selectedResumeId), target_occupation: targetRole.trim() };
+
+      const response = await analyzeSkillGap(session.accessToken, details);
+      setResult(response);
+      setRequestState("success");
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : "Could not run skill-gap analysis.");
+      setRequestState("error");
+    }
+  }
+
+  const gap = result?.skill_gap;
+  const matchedSkills = getRecordArray(gap, "matched_skills");
+  const partialSkills = getRecordArray(gap, "partially_matched_skills");
+  const missingEssential = getRecordArray(gap, "missing_essential_skills");
+  const missingOptional = getRecordArray(gap, "missing_optional_skills");
+  const occupationLabel = getStringField(result?.target_occupation, "occupation_label");
+
+  return (
+    <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="live-skill-gap-heading">
+      <div className="mb-4">
+        <p className="text-sm font-semibold text-primary">Backend analysis</p>
+        <h2 id="live-skill-gap-heading" className="mt-1 text-xl font-bold text-slate-900">Run a live skill-gap analysis</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          Select a saved resume and a target occupation. The unified AI pipeline compares your skills against ESCO occupation requirements.
+        </p>
+      </div>
+
+      {!session ? (
+        <p className="text-sm text-amber-800" role="status">
+          Sign in to run analysis. <Link className="font-semibold underline" href="/login">Go to sign in</Link>
+        </p>
+      ) : resumeState === "loading" ? (
+        <p className="text-sm text-slate-600" role="status">Loading your saved resumesâ€¦</p>
+      ) : resumeState === "error" ? (
+        <p className="text-sm text-rose-800" role="alert">{resumeError}</p>
+      ) : resumes.length === 0 ? (
+        <p className="text-sm text-slate-600" role="status">Upload a resume before running skill-gap analysis.</p>
+      ) : (
+        <form onSubmit={submit} className="grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-medium text-slate-700">
+            Saved resume
+            <select
+              required
+              value={selectedResumeId}
+              onChange={(event) => { setSelectedResumeId(event.target.value); clearResult(); }}
+              className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+            >
+              <option value="">Choose a resume</option>
+              {resumes.map((resume) => (
+                <option key={resume.id} value={resume.id}>{resume.original_name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
+            Target occupation
+            <input
+              value={targetRole}
+              onChange={(event) => { setTargetRole(event.target.value); clearResult(); }}
+              disabled={autoSelectOccupation}
+              maxLength={512}
+              placeholder="e.g. Software Developer"
+              className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 disabled:bg-slate-100"
+            />
+          </label>
+
+          <label className="flex items-start gap-2 text-sm text-slate-700 md:col-span-2">
+            <input
+              type="checkbox"
+              checked={autoSelectOccupation}
+              onChange={(event) => { setAutoSelectOccupation(event.target.checked); clearResult(); }}
+              className="mt-1"
+            />
+            <span>
+              Automatically select the top suggested occupation from my resume
+              <span className="mt-1 block text-xs text-slate-500">
+                When enabled, the target occupation field is ignored.
+              </span>
+            </span>
+          </label>
+
+          {validationError && (
+            <p className="text-sm text-rose-800 md:col-span-2" role="alert">{validationError}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={requestState === "loading"}
+            className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-wait disabled:opacity-60 md:col-span-2"
+          >
+            {requestState === "loading" ? "Analyzingâ€¦" : "Run AI analysis"}
+          </button>
+        </form>
+      )}
+
+      {requestState === "loading" && (
+        <p className="mt-4 text-sm text-slate-600" role="status">Running the unified AI pipelineâ€¦</p>
+      )}
+
+      {requestState === "error" && (
+        <p className="mt-4 text-sm text-rose-800" role="alert">{requestError}</p>
+      )}
+
+      {requestState === "success" && result && (
+        <div className="mt-5 border-t border-slate-100 pt-5" aria-live="polite">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-slate-900">
+                {occupationLabel ?? "Skill-gap analysis result"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Resume #{selectedResumeId} Â· Pipeline run #{result.pipeline_run_id}
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold capitalize text-slate-700">
+              {result.status}
+            </span>
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-slate-600">{result.matching_basis}</p>
+
+          {result.warnings.length > 0 && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h4 className="font-semibold text-amber-900">Pipeline warnings</h4>
+              <ul className="mt-2 list-inside list-disc text-sm text-amber-900">
+                {result.warnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {result.error && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <h4 className="font-semibold text-rose-900">Analysis error</h4>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-rose-900">
+                {JSON.stringify(result.error, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {result.status === "completed" && gap && (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <h4 className="font-semibold text-emerald-900">Matched skills ({matchedSkills.length})</h4>
+                  {matchedSkills.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc text-sm text-emerald-900">
+                      {matchedSkills.map((item, index) => <li key={`${index}-${getSkillLabel(item)}`}>{getSkillLabel(item)}</li>)}
+                    </ul>
+                  ) : <p className="mt-2 text-sm text-emerald-800">No matched skills were returned.</p>}
+                </div>
+
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <h4 className="font-semibold text-blue-900">Partially matched ({partialSkills.length})</h4>
+                  {partialSkills.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc text-sm text-blue-900">
+                      {partialSkills.map((item, index) => <li key={`${index}-${getSkillLabel(item)}`}>{getSkillLabel(item)}</li>)}
+                    </ul>
+                  ) : <p className="mt-2 text-sm text-blue-800">No partially matched skills were returned.</p>}
+                </div>
+
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <h4 className="font-semibold text-amber-900">Missing essential skills ({missingEssential.length})</h4>
+                  {missingEssential.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc text-sm text-amber-900">
+                      {missingEssential.map((item, index) => <li key={`${index}-${getSkillLabel(item)}`}>{getSkillLabel(item)}</li>)}
+                    </ul>
+                  ) : <p className="mt-2 text-sm text-amber-800">No missing essential skills were returned.</p>}
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="font-semibold text-slate-900">Missing optional skills ({missingOptional.length})</h4>
+                  {missingOptional.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+                      {missingOptional.map((item, index) => <li key={`${index}-${getSkillLabel(item)}`}>{getSkillLabel(item)}</li>)}
+                    </ul>
+                  ) : <p className="mt-2 text-sm text-slate-600">No missing optional skills were returned.</p>}
+                </div>
+              </div>
+
+              <details className="mt-4 rounded-xl border border-slate-200 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                  View detailed skill-gap data
+                </summary>
+                <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-600">
+                  {JSON.stringify(gap, null, 2)}
+                </pre>
+              </details>
+            </>
+          )}
+
+          {result.status !== "completed" && !result.error && (
+            <p className="mt-3 text-sm text-slate-600">
+              The pipeline has not returned a completed analysis. You can inspect the run status above.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 function SkillComparison({
   current,
   target,
@@ -57,7 +361,6 @@ function SkillComparison({
     </div>
   );
 }
-
 export default function SkillGapPage() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("All");
   const [categoryFilter, setCategoryFilter] = useState("All categories");
@@ -113,6 +416,8 @@ export default function SkillGapPage() {
           </span>
         </header>
 
+      <LiveSkillGapAnalysis />
+
         <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Skill gap summary">
           {summaryItems.map((item) => (
             <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.04)] sm:p-5">
@@ -128,7 +433,7 @@ export default function SkillGapPage() {
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Skill comparisons</h2>
-                <p className="mt-1 text-sm text-slate-500">Proficiency levels use a consistent 0–100 scale.</p>
+                <p className="mt-1 text-sm text-slate-500">Proficiency levels use a consistent 0Ã¢â‚¬â€œ100 scale.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -167,7 +472,7 @@ export default function SkillGapPage() {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 py-4 text-xs text-slate-500" aria-label="Comparison legend">
               <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />Current</span>
               <span className="inline-flex items-center gap-2"><span className="h-3 w-0 border-l-2 border-dashed border-slate-700" />Required target</span>
-              <span className="ml-auto text-slate-400">0 = foundational · 100 = advanced</span>
+              <span className="ml-auto text-slate-400">0 = foundational Ã‚Â· 100 = advanced</span>
             </div>
 
             <div className="space-y-3">
@@ -184,7 +489,7 @@ export default function SkillGapPage() {
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
                           Current <span className="font-semibold text-slate-700">{skill.current}/100</span>
-                          <span className="mx-2 text-slate-300">·</span>
+                          <span className="mx-2 text-slate-300">Ã‚Â·</span>
                           Target <span className="font-semibold text-slate-700">{skill.target}/100</span>
                         </p>
                       </div>
@@ -238,7 +543,7 @@ export default function SkillGapPage() {
                 ))}
               </ol>
               <Link href="/learning-roadmap" className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2">
-                Open learning roadmap <span aria-hidden="true">→</span>
+                Open learning roadmap <span aria-hidden="true">Ã¢â€ â€™</span>
               </Link>
               <Link href="/career-readiness" className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
                 Review career readiness

@@ -4,15 +4,18 @@
 from functools import lru_cache
 from typing import Any
 
-from sentence_transformers import SentenceTransformer
-
 
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=2)
-def _load_model(model_name: str = DEFAULT_MODEL_NAME) -> SentenceTransformer:
+def _load_model(model_name: str = DEFAULT_MODEL_NAME) -> Any:
     """Load and cache the pretrained sentence embedding model."""
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as exc:
+        raise ImportError("Sentence Transformers is required for non-empty skill embeddings. Install it using: python -m pip install -r Backend/Requirements-ai-test.txt") from exc
+
     return SentenceTransformer(model_name)
 
 
