@@ -7,7 +7,28 @@ import {
   getPipelineCareerReadiness,
   updatePipelineTaskProgress,
   getPipelineLearningRoadmap,
+  getSkillPriorities,
+  getPipelineKnowledgeGraph,
 } from "../lib/pipeline-api.ts";
+
+test("skill priorities and knowledge graph use the selected pipeline run", async () => {
+  const requests = [];
+  const mockFetch = async (url, init) => {
+    requests.push({ url, init });
+    if (url.endsWith("/priorities")) {
+      return Response.json({ pipeline_run_id: 27, target_occupation: null, items: [{ skill_name: "SQL", priority: "High" }] });
+    }
+    return Response.json({ pipeline_run_id: 27, summary: { total_nodes: 2 }, nodes: [{ id: "a", label: "SQL", kind: "esco_skill" }], relationships: [], scope: "Analysis graph" });
+  };
+
+  const priorities = await getSkillPriorities("test-token", 27, mockFetch);
+  const graph = await getPipelineKnowledgeGraph("test-token", 27, mockFetch);
+  assert.equal(priorities.items[0].skill_name, "SQL");
+  assert.equal(graph.nodes[0].label, "SQL");
+  assert.match(requests[0].url, /\/skill-gaps\/runs\/27\/priorities$/);
+  assert.match(requests[1].url, /\/skill-gaps\/runs\/27\/knowledge-graph$/);
+  assert.equal(requests[0].init.headers.Authorization, "Bearer test-token");
+});
 
 test("analyzeSkillGap sends authenticated analysis request", async () => {
   let capturedUrl;

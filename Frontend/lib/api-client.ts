@@ -176,7 +176,7 @@ export type DashboardResponse = {
   latest_skill_gap: {
     id: number;
     resume_id: number;
-    target_role: string;
+    target_role: string | null;
     match_score: number | null;
     created_at: string;
   } | null;
@@ -718,7 +718,7 @@ function parseDashboard(payload: unknown): DashboardResponse {
   if (latestSkillGap !== null && (!isRecord(latestSkillGap) ||
       !Number.isInteger(latestSkillGap.id) || (latestSkillGap.id as number) <= 0 ||
       !Number.isInteger(latestSkillGap.resume_id) || (latestSkillGap.resume_id as number) <= 0 ||
-      typeof latestSkillGap.target_role !== "string" ||
+      !(latestSkillGap.target_role === null || typeof latestSkillGap.target_role === "string") ||
       !(latestSkillGap.match_score === null || (
         typeof latestSkillGap.match_score === "number" && Number.isFinite(latestSkillGap.match_score) &&
         latestSkillGap.match_score >= 0 && latestSkillGap.match_score <= 100
@@ -757,7 +757,7 @@ function parseActivity(payload: unknown): ActivityResponse {
       return item as ActivityItem;
     }
     if (item.type === "skill_gap_analyzed" && "resume_id" in item && typeof item.resume_id === "number" &&
-        "target_role" in item && typeof item.target_role === "string" &&
+        "target_role" in item && (typeof item.target_role === "string" || item.target_role === null) &&
         "match_score" in item && (item.match_score === null || (typeof item.match_score === "number" && Number.isFinite(item.match_score) && item.match_score >= 0 && item.match_score <= 100))) {
       return item as ActivityItem;
     }

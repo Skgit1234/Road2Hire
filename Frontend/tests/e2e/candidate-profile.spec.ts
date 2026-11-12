@@ -4,7 +4,7 @@ const routes = [
   ["/", "Welcome to Road2Hire"],
   ["/resume", "Resume and candidate profile"],
   ["/jobs", "Jobs"],
-  ["/skill-gap", "Your skill gap"],
+  ["/skill-gap", "Skill gap dashboard"],
   ["/career-readiness", "Career readiness"],
   ["/learning-roadmap", "Learning roadmap"],
   ["/career-assistant", "Career assistant"],
@@ -95,7 +95,7 @@ function minimalPdfFixture() {
   return Buffer.from(pdf, "ascii");
 }
 
-async function installAuthMocks(page: Page) {
+async function installAuthMocks(page: Page, emptyDashboard = false) {
   await page.route(/\/auth\/login\/?$/, (route) => jsonResponse(route, 200, {
     access_token: "e2e-access-token",
     token_type: "bearer",
@@ -119,10 +119,32 @@ async function installAuthMocks(page: Page) {
     ],
     limit: 20,
   }));
+  await page.route(/\/career-readiness\/runs\/18$/, (route) => jsonResponse(route, 200, { ...readiness, pipeline_run_id: 18 }));
+  await page.route(/\/learning-roadmap\/runs\/18$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 18,
+    target_occupation_title: "Software Developer",
+    target_occupation_uri: null,
+    total_roadmap_skills: emptyDashboard ? 0 : 1,
+    total_estimated_weeks: null,
+    phases: emptyDashboard ? [] : [{ phase_number: 1, phase_name: "Core skills", description: "Build foundational skills", estimated_weeks: "2", items: [{ logical_item_key: "java", roadmap_phase_number: 1, roadmap_phase_name: "Core skills", skill_name: "Java", skill_uri: null, priority: "high", roadmap_item_data: {}, current_status: null, importance_rationale: null, learning_outcome: null, suggested_activities: [], practical_project: null, estimated_duration_weeks: null, prerequisites: [], completion_criteria: null, resource_categories: [], status: "in_progress", progress: 25, task_id: 9, updated_at: "2026-10-20T10:00:00Z" }] }],
+    disclaimers: [],
+  }));
+  await page.route(/\/skill-gaps\/runs\/18\/priorities$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 18,
+    target_occupation: { occupation_label: "Software Developer" },
+    items: emptyDashboard ? [] : [{ skill_name: "Java", priority: "high" }],
+  }));
+  await page.route(/\/skill-gaps\/runs\/18\/knowledge-graph$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 18,
+    summary: {},
+    nodes: emptyDashboard ? [] : [{ id: "missing:sql", label: "SQL", kind: "esco_skill", gap_status: "missing" }],
+    relationships: emptyDashboard ? [] : [{ source: "candidate:java", target: "occupation:java", type: "matches_skill" }],
+    scope: "Persisted skill graph",
+  }));
 }
 
-async function signIn(page: Page) {
-  await installAuthMocks(page);
+async function signIn(page: Page, emptyDashboard = false) {
+  await installAuthMocks(page, emptyDashboard);
   await page.goto("/login");
   await page.getByLabel("Email").fill("avery@example.test");
   await page.getByLabel("Password").fill("e2e-test-password");
@@ -287,13 +309,39 @@ test("dashboard loads authenticated summary and recent activity from mocked APIs
   await navigateFromSidebar(page, "Dashboard");
   await expect(page.getByRole("img", { name: "Dashboard avatar: Avery Candidate" })).toHaveText("AC");
 
-  const summary = page.getByLabel("Backend dashboard summary");
+  const summary = page.getByLabel("Account summary");
   await expect(summary.getByText("Saved resumes")).toBeVisible();
-  await expect(summary.getByText("2", { exact: true })).toBeVisible();
+  await expect(summary.getByRole("paragraph").filter({ hasText: /^2$/ })).toBeVisible();
   await expect(summary.getByText("Average skill match")).toBeVisible();
   await expect(summary.getByText("Match score unavailable")).toBeVisible();
   await expect(page.getByText(`Resume uploaded: ${resume.original_name}`)).toBeVisible();
   await expect(page.getByText("Skill gap analyzed for Software Developer (match score unavailable)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Career readiness", exact: true })).toBeVisible();
+  await expect(page.getByText("developing", { exact: true })).toBeVisible();
+  await expect(page.getByText("Java", { exact: true }).first()).toBeVisible();
+  const learningTask = page.getByRole("list", { name: "Learning progress chart" }).getByRole("listitem");
+  await expect(learningTask).toContainText("Java");
+  await expect(learningTask).toContainText("in progress");
+  await expect(learningTask).toContainText("25%");
+  await expect(page.getByText("Historical readiness data is not available yet.")).toBeVisible();
+  await expect(page.getByText("Matched skills", { exact: true })).toBeVisible();
+  await expect(page.getByText("Missing skills", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Skill priority chart" })).toBeVisible();
+  await expect(page.getByText("high", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Learning progress" })).toBeVisible();
+  await expect(page.getByText("in progress · 25%")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Skill coverage chart" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test("dashboard visualizations show empty states when the backend has no chart data", async ({ page }) => {
+  await signIn(page, true);
+  await navigateFromSidebar(page, "Dashboard");
+  await expect(page.getByText("Matched and missing skill data is not available for the latest analysis.")).toBeVisible();
+  await expect(page.getByText("No saved roadmap priority data is available for the latest analysis.")).toBeVisible();
+  await expect(page.getByText("No saved learning task progress is available.")).toBeVisible();
 });
 
 test("resume flow validates PDFs, uploads through mocked API, refreshes the list, and displays analysis", async ({ page }) => {
@@ -725,16 +773,39 @@ test("live skill-gap analysis shows loading and renders the mocked backend resul
         occupation_label: "Software Developer",
       },
       skill_gap: {
-        matched_skills: [{ candidate_skill: "Java" }],
-        partially_matched_skills: [],
-        missing_essential_skills: [{ target_skill: "SQL" }],
-        missing_optional_skills: [],
+        overall_skill_coverage_score: 0.75,
+        essential_skill_coverage_score: 0.8,
+        optional_skill_coverage_score: 0.6,
+        matched_skills: [{ candidate_skill: "Java runtime", occupation_skill: "Java" }],
+        partially_matched_skills: [{ candidate_skill: "PostgreSQL", occupation_skill: "SQL", graph_relationship: "related_skill" }],
+        missing_essential_skills: [{ skill_label: "Cloud Computing" }],
+        missing_optional_skills: [{ skill_label: "Communication" }],
       },
       learning_roadmap: null,
       knowledge_graph: null,
       error: null,
     });
   });
+  await page.route(/\/skill-gaps\/runs\/27\/priorities\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 27,
+    target_occupation: { occupation_label: "Software Developer" },
+    items: [{ skill_name: "Cloud Computing", priority: "High", phase_number: 1, phase_name: "Foundations", importance_rationale: "Required for the selected occupation." }],
+  }));
+  await page.route(/\/skill-gaps\/runs\/27\/knowledge-graph\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 27,
+    summary: { total_nodes: 4, total_edges: 2 },
+    nodes: [
+      { id: "candidate:java", label: "Java", kind: "candidate_skill" },
+      { id: "esco:java", label: "Java", kind: "esco_skill" },
+      { id: "candidate:postgres", label: "PostgreSQL", kind: "candidate_skill" },
+      { id: "esco:sql", label: "SQL", kind: "esco_skill" },
+    ],
+    relationships: [
+      { source: "candidate:java", target: "esco:java", type: "matches_skill", explanation: "Exact skill match" },
+      { source: "candidate:postgres", target: "esco:sql", type: "partially_matches_skill", explanation: "Related database skill" },
+    ],
+    scope: "Skill-match relationships are derived from canonical matched and partially matched evidence.",
+  }));
 
   await signIn(page);
   await navigateFromSidebar(page, "Skill Gap");
@@ -753,8 +824,27 @@ test("live skill-gap analysis shows loading and renders the mocked backend resul
     name: "Software Developer",
     exact: true,
   })).toBeVisible();
-  await expect(page.getByText("Java", { exact: true })).toBeVisible();
-  await expect(page.getByRole("listitem").filter({ hasText: /^SQL$/ })).toBeVisible();
+  await expect(page.getByText("Java", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("SQL", { exact: true })).toBeVisible();
+  await expect(page.getByText("Cloud Computing", { exact: true }).first()).toBeVisible();
+  const breakdown = page.getByRole("region", { name: "Skill match breakdown" });
+  await expect(breakdown.getByRole("listitem").filter({ hasText: "Java runtime" }).locator("span").first()).toHaveText("Java runtime → Java");
+  await expect(breakdown.getByRole("listitem").filter({ hasText: "PostgreSQL" }).locator("span").first()).toHaveText("PostgreSQL → SQL");
+  await expect(breakdown.getByRole("heading", { name: "Missing essential skills" }).locator("xpath=../..").getByRole("listitem")).toContainText("Cloud Computing");
+  await expect(breakdown.getByRole("heading", { name: "Missing optional skills" }).locator("xpath=../..").getByRole("listitem")).toContainText("Communication");
+  await expect(page.getByText("Overall skill coverage")).toBeVisible();
+  await expect(page.getByText("75%", { exact: true })).toBeVisible();
+  await expect(page.getByText("80%", { exact: true })).toBeVisible();
+  await expect(page.getByText("60%", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Skill priorities" })).toBeVisible();
+  await expect(page.getByText("Required for the selected occupation.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Interactive skill relationship graph" })).toBeVisible();
+  await expect(page.getByText("partial · candidate skill", { exact: false }).first()).toBeVisible();
+  const partialNode = page.getByRole("button", { name: "PostgreSQL, partial candidate skill" });
+  await partialNode.focus();
+  await expect(partialNode).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("PostgreSQL · partial · candidate skill", { exact: true })).toBeVisible();
 
   expect(authorization).toBe("Bearer e2e-access-token");
   expect(requestMethod).toBe("POST");
@@ -779,7 +869,82 @@ test("skill-gap API errors are displayed without crashing the page", async ({ pa
   await expect(page.getByRole("alert").filter({
     hasText: "Skill-gap analysis temporarily unavailable",
   })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your skill gap" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Skill gap dashboard" })).toBeVisible();
+});
+
+test("late priority and graph responses from an earlier run cannot replace the active run", async ({ page }) => {
+  const oldRequestsStarted = deferred();
+  const releaseOldResponses = deferred();
+  const oldResponsesFinished = deferred();
+  let oldRequestCount = 0;
+  let oldResponseCount = 0;
+
+  await page.route("**/resumes", (route) => jsonResponse(route, 200, [resume]));
+  await page.route(/\/skill-gaps\/analyze\/?$/, (route) => {
+    const target = route.request().postDataJSON().target_occupation;
+    const isSecondRun = target === "Role B";
+    return jsonResponse(route, 200, {
+      pipeline_run_id: isSecondRun ? 31 : 30,
+      status: "completed",
+      matching_basis: "Analysis uses the selected occupation.",
+      warnings: [],
+      target_occupation: { occupation_label: target },
+      skill_gap: {
+        overall_skill_coverage_score: isSecondRun ? 0.9 : 0.4,
+        essential_skill_coverage_score: isSecondRun ? 0.9 : 0.4,
+        optional_skill_coverage_score: isSecondRun ? 0.9 : 0.4,
+        matched_skills: [], partially_matched_skills: [], missing_essential_skills: [], missing_optional_skills: [],
+      },
+      learning_roadmap: null, knowledge_graph: null, error: null,
+    });
+  });
+  await page.route(/\/skill-gaps\/runs\/(30|31)\/priorities\/?$/, async (route) => {
+    const runId = Number(route.request().url().match(/runs\/(30|31)\//)?.[1]);
+    if (runId === 30) {
+      oldRequestCount += 1;
+      if (oldRequestCount === 2) oldRequestsStarted.resolve();
+      await releaseOldResponses.promise;
+      await jsonResponse(route, 200, { pipeline_run_id: 30, target_occupation: null, items: [{ skill_name: "Role A priority", priority: "High" }] });
+      oldResponseCount += 1;
+      if (oldResponseCount === 2) oldResponsesFinished.resolve();
+      return;
+    }
+    await jsonResponse(route, 200, { pipeline_run_id: 31, target_occupation: null, items: [{ skill_name: "Role B priority", priority: "High" }] });
+  });
+  await page.route(/\/skill-gaps\/runs\/(30|31)\/knowledge-graph\/?$/, async (route) => {
+    const runId = Number(route.request().url().match(/runs\/(30|31)\//)?.[1]);
+    if (runId === 30) {
+      oldRequestCount += 1;
+      if (oldRequestCount === 2) oldRequestsStarted.resolve();
+      await releaseOldResponses.promise;
+      await jsonResponse(route, 200, { pipeline_run_id: 30, summary: {}, nodes: [{ id: "a", label: "Role A graph", kind: "esco_skill" }], relationships: [], scope: "Run 30 graph." });
+      oldResponseCount += 1;
+      if (oldResponseCount === 2) oldResponsesFinished.resolve();
+      return;
+    }
+    await jsonResponse(route, 200, { pipeline_run_id: 31, summary: {}, nodes: [{ id: "b", label: "Role B graph", kind: "esco_skill" }], relationships: [], scope: "Run 31 graph." });
+  });
+
+  await signIn(page);
+  await navigateFromSidebar(page, "Skill Gap");
+  await page.getByLabel("Saved resume").selectOption(String(resume.id));
+  const target = page.getByRole("textbox", { name: "Target occupation" });
+  await target.fill("Role A");
+  await page.getByRole("button", { name: "Run AI analysis" }).click();
+  await oldRequestsStarted.promise;
+
+  await target.fill("Role B");
+  await page.getByRole("button", { name: "Run AI analysis" }).click();
+  await expect(page.getByRole("heading", { name: "Role B", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Role B priority" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Role B graph, neutral esco skill" })).toBeVisible();
+
+  releaseOldResponses.resolve();
+  await oldResponsesFinished.promise;
+  await expect(page.getByRole("heading", { name: "Role B priority" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Role B graph, neutral esco skill" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Role A priority" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Role A graph, neutral esco skill" })).toHaveCount(0);
 });
 
 test("Career Assistant remains a local demo and does not send messages to an AI service", async ({ page }) => {
@@ -796,10 +961,91 @@ test("Career Assistant remains a local demo and does not send messages to an AI 
   expect(assistantRequests).toEqual([]);
 });
 
-test("skill filters preserve the no-results empty state", async ({ page }) => {
-  await page.goto("/skill-gap");
+test("Skill Gap priority and category filters show the no-results state", async ({ page }) => {
+  await page.route("**/resumes", (route) => jsonResponse(route, 200, [resume]));
+  await page.route(/\/skill-gaps\/analyze\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 28,
+    status: "completed",
+    matching_basis: "Analysis uses the selected occupation.",
+    warnings: [],
+    target_occupation: { occupation_label: "Software Developer" },
+    skill_gap: {
+      overall_skill_coverage_score: 0.5,
+      essential_skill_coverage_score: 0.5,
+      optional_skill_coverage_score: null,
+      matched_skills: [],
+      partially_matched_skills: [],
+      missing_essential_skills: [],
+      missing_optional_skills: [],
+    },
+    learning_roadmap: null,
+    knowledge_graph: null,
+    error: null,
+  }));
+  await page.route(/\/skill-gaps\/runs\/28\/priorities\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 28,
+    target_occupation: { occupation_label: "Software Developer" },
+    items: [
+      { skill_name: "TypeScript", priority: "Medium", phase_number: 1, phase_name: "Technical Skills" },
+      { skill_name: "Collaboration", priority: "High", phase_number: 2, phase_name: "Career Skills" },
+    ],
+  }));
+  await page.route(/\/skill-gaps\/runs\/28\/knowledge-graph\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 28,
+    summary: {},
+    nodes: [],
+    relationships: [],
+    scope: "No graph topology for this analysis.",
+  }));
+
+  await signIn(page);
+  await navigateFromSidebar(page, "Skill Gap");
+  await page.getByLabel("Saved resume").selectOption(String(resume.id));
+  await page.getByRole("textbox", { name: "Target occupation" }).fill("Software Developer");
+  await page.getByRole("button", { name: "Run AI analysis" }).click();
+  await expect(page.getByRole("heading", { name: "Skill priorities" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Medium priority" })).toBeVisible();
+
   await page.getByRole("button", { name: "Medium priority" }).click();
   await page.getByLabel("Filter by category").selectOption("Career Skills");
   await expect(page.getByText(/No skills match both filters/)).toBeVisible();
   await expect(page.getByText("0 skills", { exact: true })).toBeVisible();
+});
+
+test("skill-gap dashboard retries failed graph and priority loads and handles empty data", async ({ page }) => {
+  let priorityAttempts = 0;
+  let graphAttempts = 0;
+  await page.route("**/resumes", (route) => jsonResponse(route, 200, [resume]));
+  await page.route(/\/skill-gaps\/analyze\/?$/, (route) => jsonResponse(route, 200, {
+    pipeline_run_id: 29, status: "completed", matching_basis: "No requirements matched.", warnings: [],
+    target_occupation: { occupation_label: "Role without matches" },
+    skill_gap: { overall_skill_coverage_score: 0, essential_skill_coverage_score: 0, optional_skill_coverage_score: null, matched_skills: [], partially_matched_skills: [], missing_essential_skills: [], missing_optional_skills: [] },
+    learning_roadmap: null, knowledge_graph: null, error: null,
+  }));
+  await page.route(/\/skill-gaps\/runs\/29\/priorities\/?$/, (route) => {
+    priorityAttempts += 1;
+    return priorityAttempts === 1
+      ? jsonResponse(route, 503, { detail: "Priorities unavailable" })
+      : jsonResponse(route, 200, { pipeline_run_id: 29, target_occupation: null, items: [] });
+  });
+  await page.route(/\/skill-gaps\/runs\/29\/knowledge-graph\/?$/, (route) => {
+    graphAttempts += 1;
+    return graphAttempts === 1
+      ? jsonResponse(route, 503, { detail: "Graph unavailable" })
+      : jsonResponse(route, 200, { pipeline_run_id: 29, summary: {}, nodes: [], relationships: [], scope: "No graph topology." });
+  });
+  await page.goto("/skill-gap");
+  await signIn(page);
+  await navigateFromSidebar(page, "Skill Gap");
+  await page.getByLabel("Saved resume").selectOption(String(resume.id));
+  await page.getByRole("textbox", { name: "Target occupation" }).fill("Role without matches");
+  await page.getByRole("button", { name: "Run AI analysis" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Priorities unavailable" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Graph unavailable" })).toBeVisible();
+  await page.getByRole("button", { name: "Retry priorities" }).click();
+  await page.getByRole("button", { name: "Retry graph" }).click();
+  await expect(page.getByText("No graph nodes were returned for this analysis.")).toBeVisible();
+  await expect(page.getByText("No priority items were returned for this analysis.")).toBeVisible();
+  await expect(page.getByText("Optional skill coverage")).toBeVisible();
+  await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
 });
