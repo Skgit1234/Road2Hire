@@ -1,8 +1,8 @@
 # Road2Hire AI backend reference
 
-This reference describes the AI and resume-processing functions used by the
-current backend integration candidate. It is based on source inspection and
-contract tests; it does not claim database-backed or live AI-service behavior.
+This reference describes the active AI and resume-processing functions in the
+integrated backend. Source and dependency-injected contract tests are the basis
+for these notes; live database and model connectivity are environment-dependent.
 
 ## Current callable processing
 
@@ -40,6 +40,41 @@ exact skill-name comparison. The route persists its result and may return a
 cached result for identical resume content and request inputs. This is a
 rule-based baseline, not semantic or embedding similarity.
 
+## Job matching
+
+POST /jobs/{job_id}/matches requires bearer authentication and verifies that
+both the job and resume belong to the caller. It runs and saves one unified
+pipeline result against the job's target occupation. The response keeps this
+occupation-based analysis separate from job-specific matching against the
+job's stored required_skills. Job-specific matching uses only
+pipeline.skills.extracted_skills and the shared SemanticSkillMatcher. Confirmed
+exact, taxonomy-normalized, semantic, or validated identical-ESCO-URI matches
+count as present. Uncertain matches retain candidate, similarity, and evidence;
+known related skills retain their relation evidence. Neither counts as present.
+Requirements with candidates but no matcher evidence are `non_match`; when no
+candidate skills exist they are `missing`. Only `confirmed_match` contributes
+coverage, with essential and optional scores calculated separately and combined
+using the shared gap-scoring weights. Semantic thresholds are provisional, and
+extracted keyword matches are not verified candidate facts.
+
+Requirement `canonical_uri` values are not trusted as arbitrary strings. A URI
+match is used only when the requirement URI and a candidate mapping URI both
+resolve through the repository's ESCO taxonomy, are equal, and the mapping's
+skill name is present in `extracted_skills`. If either side cannot be resolved
+or linked, matching falls back to skill names and taxonomy-based semantic
+matching. URI lookup uses the local ESCO dataset; no URI-to-label mapping is
+invented. The response carries both job_id and pipeline_run_id with the
+job-specific result. No job-specific result is applied when the saved job has
+no requirements or the pipeline run did not complete.
+
+## Career Assistant
+
+POST /assistant/messages requires bearer authentication and currently returns
+503 because this repository has no configured chat model or retrieval service.
+The frontend remains an explicitly labeled local demonstration and does not
+send messages to that endpoint. Its sample responses are not live AI guidance
+or personal candidate analysis.
+
 ## Planned or unavailable capabilities
 
 The frontend's resume-extraction.v1 type describes planned structured fields,
@@ -47,19 +82,16 @@ evidence, confidence, and provenance. The backend does not currently emit that
 contract. Its PDF text extraction, rule-based section grouping, and vocabulary
 matches must remain distinct from that future structured extraction.
 
-There is no registered Career Assistant endpoint in this candidate and no
-RAG, retrieval index, chat model client, or LLM orchestration. The frontend
-assistant is a local demo with predefined responses. Embedding helpers that
-exist elsewhere in the repository are not called by the registered API and
-do not make the assistant operational.
+The frontend's richer profile sample values are demo data.
 
-Jobs matching is also not registered in the candidate app and is not called
-by the frontend API client. The upstream backend branch's Jobs and Assistant
-routers are therefore not included as active contracts here.
+Non-exact name comparisons require the optional Sentence Transformers package
+and its model weights. A confirmed canonical URI match can be resolved locally
+without embedding inference. If name matching needs embeddings and they are
+unavailable, the job match endpoint reports matching as unavailable rather
+than returning fabricated matches.
 
 ## Verification boundary
 
-Database-independent API contract tests use dependency overrides and validate
-route schemas, authentication behavior, ownership filters, upload validation,
-response serialization, generic errors, and CORS. They do not contact
-PostgreSQL, run migrations, or verify live model/AI service connectivity.
+Unit tests for job matching use a stub matcher to verify scoring, provenance,
+empty and invalid input handling without downloading model weights. They do
+not contact PostgreSQL, run migrations, or verify live model connectivity.

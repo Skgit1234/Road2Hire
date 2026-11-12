@@ -34,7 +34,7 @@ export default function ResumePage() {
   const uploadLock = useRef(false);
   const analysisRequest = useRef(0);
   const { profile, setResumeMetadata, resetResumeMetadata } = useCandidateProfile();
-  const { session } = useAuth();
+  const { session, isRestoring } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<UploadState>("empty");
   const [message, setMessage] = useState("");
@@ -259,7 +259,7 @@ export default function ResumePage() {
             <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{profile.resume.fileName}</p><p className="mt-1 text-xs text-slate-500">{profile.resume.fileSize === null ? "Selected earlier in this session" : formatSize(profile.resume.fileSize)} · File must be reselected after navigation</p></div>
             <button type="button" onClick={removeFile} className="text-sm font-medium text-slate-600 underline">Remove</button>
           </div>}
-          {!session && <p className="mt-3 text-sm text-amber-800" role="status">Sign in before uploading or viewing saved resumes. <Link className="font-semibold underline" href="/login">Go to sign in</Link></p>}
+          {isRestoring ? <p className="mt-3 text-sm text-slate-600" role="status">Restoring your session…</p> : !session && <p className="mt-3 text-sm text-amber-800" role="status">Sign in before uploading or viewing saved resumes. <Link className="font-semibold underline" href="/login">Go to sign in</Link></p>}
           <button type="button" onClick={submit} disabled={!file || !session || state === "uploading" || state === "success"} className="mt-4 min-h-11 w-full rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2">
             {state === "uploading" ? "Uploading…" : "Upload PDF"}
           </button>
@@ -269,7 +269,7 @@ export default function ResumePage() {
           <h2 className="font-semibold text-slate-900">Saved resumes</h2>
           {resumeActionMessage && <p className="mt-2 text-sm text-emerald-800" role="status">{resumeActionMessage}</p>}
           {resumeActionError && <p className="mt-2 text-sm text-rose-800" role="alert">{resumeActionError}</p>}
-          {!session ? <p className="mt-2 text-sm leading-6 text-slate-600">Sign in to load resumes associated with your account.</p> : listState === "loading" ? <p className="mt-2 text-sm text-slate-600" role="status">Loading your resumes…</p> : listState === "error" ? <div className="mt-2" role="alert"><p className="text-sm text-rose-800">{listMessage}</p><button type="button" onClick={() => void refreshResumes(session.accessToken)} className="mt-3 text-sm font-semibold text-indigo-700 underline">Retry</button></div> : resumes.length === 0 ? <p className="mt-2 text-sm text-slate-600" role="status">No resumes have been uploaded yet.</p> : <ul className="mt-3 divide-y divide-slate-100">
+          {isRestoring ? <p className="mt-2 text-sm text-slate-600" role="status">Restoring your session…</p> : !session ? <p className="mt-2 text-sm leading-6 text-slate-600">Sign in to load resumes associated with your account.</p> : listState === "loading" ? <p className="mt-2 text-sm text-slate-600" role="status">Loading your resumes…</p> : listState === "error" ? <div className="mt-2" role="alert"><p className="text-sm text-rose-800">{listMessage}</p><button type="button" onClick={() => void refreshResumes(session.accessToken)} className="mt-3 text-sm font-semibold text-indigo-700 underline">Retry</button></div> : resumes.length === 0 ? <p className="mt-2 text-sm text-slate-600" role="status">No resumes have been uploaded yet.</p> : <ul className="mt-3 divide-y divide-slate-100">
             {resumes.map((resume) => {
               const downloading = resumeAction?.id === resume.id && resumeAction.action === "download";
               const deleting = resumeAction?.id === resume.id && resumeAction.action === "delete";
@@ -302,7 +302,7 @@ export default function ResumePage() {
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="resume-analysis-heading">
         <div className="mb-4"><p className="text-sm font-semibold text-primary">Backend analysis</p><h2 id="resume-analysis-heading" className="mt-1 text-2xl font-bold text-slate-900">Resume analysis results</h2><p className="mt-1 text-sm text-slate-500">Choose Analyze on a saved resume to request its current backend analysis.</p></div>
-        {!session ? <p className="text-sm text-slate-600" role="status">Sign in to request resume analysis.</p> : analysisState === "idle" ? <p className="text-sm text-slate-600" role="status">Analysis has not been requested in this view.</p> : analysisState === "loading" ? <p className="text-sm text-slate-600" role="status">Analyzing {selectedAnalysisResume?.original_name ?? "resume"}…</p> : analysisState === "error" ? <p className="text-sm text-rose-800" role="alert">{analysisError}</p> : analysis && <div aria-live="polite">
+        {isRestoring ? <p className="text-sm text-slate-600" role="status">Restoring your session…</p> : !session ? <p className="text-sm text-slate-600" role="status">Sign in to request resume analysis.</p> : analysisState === "idle" ? <p className="text-sm text-slate-600" role="status">Analysis has not been requested in this view.</p> : analysisState === "loading" ? <p className="text-sm text-slate-600" role="status">Analyzing {selectedAnalysisResume?.original_name ?? "resume"}…</p> : analysisState === "error" ? <p className="text-sm text-rose-800" role="alert">{analysisError}</p> : analysis && <div aria-live="polite">
           <p className="text-sm font-semibold text-slate-800">Analysis completed for {analysis.original_name}</p>
           <p className="mt-1 text-xs text-slate-500">{analysis.page_count} pages · Pipeline {analysis.pipeline_version} · Skill extraction: {analysis.skill_extraction_method}</p>
           {Object.keys(analysis.sections).length === 0 && analysis.extracted_skills.length === 0 ? <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Analysis completed, but no text sections or skills were detected.</p> : <div className="mt-4 grid gap-5 md:grid-cols-2">

@@ -65,7 +65,7 @@ function getSkillLabel(item: Record<string, unknown>): string {
 }
 
 function LiveSkillGapAnalysis() {
-  const { session } = useAuth();
+  const { session, isRestoring } = useAuth();
   const [resumes, setResumes] = useState<ResumeRecord[]>([]);
   const [resumeState, setResumeState] = useState<"loading" | "ready" | "error">("loading");
   const [resumeError, setResumeError] = useState("");
@@ -162,7 +162,9 @@ function LiveSkillGapAnalysis() {
         </p>
       </div>
 
-      {!session ? (
+      {isRestoring ? (
+        <p className="text-sm text-slate-600" role="status">Restoring your session…</p>
+      ) : !session ? (
         <p className="text-sm text-amber-800" role="status">
           Sign in to run analysis. <Link className="font-semibold underline" href="/login">Go to sign in</Link>
         </p>

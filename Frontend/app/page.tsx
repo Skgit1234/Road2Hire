@@ -149,7 +149,7 @@ function DashboardCard({
 }
 
 export default function Dashboard() {
-  const { session } = useAuth();
+  const { session, isRestoring } = useAuth();
   const { profile } = useCandidateProfile();
   const [accountData, setAccountData] = useState<{
     userId: number;
@@ -238,9 +238,10 @@ export default function Dashboard() {
         </header>
 
         <section className="mb-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-4" aria-label="Backend dashboard summary">
+          {isRestoring && <p role="status" className="col-span-full rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Restoring your session…</p>}
           {dashboardLoading && <p role="status" className="col-span-full rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Loading your account summary…</p>}
           {dashboardError && <p role="alert" className="col-span-full rounded-xl border border-rose-200 bg-white p-5 text-sm text-rose-700">{dashboardError}</p>}
-          {!session && <DashboardCard className="col-span-full p-5"><p className="text-sm text-slate-700">Sign in to load your account summary.</p><Link href="/login" className="mt-2 inline-block text-sm font-semibold text-indigo-700 underline">Sign in</Link></DashboardCard>}
+          {!isRestoring && !session && <DashboardCard className="col-span-full p-5"><p className="text-sm text-slate-700">Sign in to load your account summary.</p><Link href="/login" className="mt-2 inline-block text-sm font-semibold text-indigo-700 underline">Sign in</Link></DashboardCard>}
           {!dashboardLoading && !dashboardError && dashboardCards.map((card) => (
             <DashboardCard key={card.title} className="p-4">
               <p className="text-sm font-medium text-slate-500">{card.title}</p>

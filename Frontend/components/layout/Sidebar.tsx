@@ -117,7 +117,7 @@ function NavIcon({ name, active = false }: { name: string; active?: boolean }) {
 }
 
 export default function Sidebar() {
-  const { session, signOut } = useAuth();
+  const { session, isRestoring, signOut } = useAuth();
   const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -244,7 +244,7 @@ export default function Sidebar() {
 
           <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Sidebar navigation">
             <div className="space-y-1.5">
-              {navigation.map((item) => {
+              {navigation.filter((item) => !isRestoring || item.name !== "Sign in").map((item) => {
                 const active = getIsActive(item.href);
 
                 return (
@@ -310,11 +310,11 @@ export default function Sidebar() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-semibold text-white">
-                    {session?.profile.name ?? "Arjun Mehta"}
+                    {isRestoring ? "Restoring session..." : session?.profile.name ?? "Guest"}
                   </p>
                 </div>
                 <p className="truncate text-[11px] text-slate-300">
-                  {session?.profile.email ?? "Frontend Developer"}
+                  {isRestoring ? "Please wait..." : session?.profile.email ?? "Sign in to your account"}
                 </p>
               </div>
             </div>

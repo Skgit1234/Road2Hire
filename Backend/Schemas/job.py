@@ -76,6 +76,7 @@ class JobMatchingResponse(BaseModel):
     run: PipelineRunResponse
     matching_basis: str
     job_specific_required_skills_applied: bool
+    job_specific_matching: dict | None = None
 
 
 class OccupationMatchesResponse(BaseModel):

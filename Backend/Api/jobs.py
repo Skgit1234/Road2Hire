@@ -23,6 +23,7 @@ from Services.pipeline_service import (
     ResumeOwnershipError,
     run_pipeline_for_resume,
 )
+from Services.job_matching import match_job_requirements
 
 
 logger = logging.getLogger(__name__)
@@ -184,11 +185,49 @@ def match_resume_to_job(
             detail="Could not run job matching",
         ) from exc
 
+    canonical = run.canonical_output if isinstance(run.canonical_output, dict) else {}
+    skills = canonical.get("skills")
+    extracted_skills = (
+        skills.get("extracted_skills", []) if isinstance(skills, dict) else []
+    )
+    if not isinstance(extracted_skills, list):
+        extracted_skills = []
+    candidate_mappings = (
+        skills.get("esco_mappings", []) if isinstance(skills, dict) else []
+    )
+    if not isinstance(candidate_mappings, list):
+        candidate_mappings = []
+    job_requirements = job_response.required_skills
+    job_specific_matching = None
+    if run.status == "completed":
+        try:
+            job_specific_matching = match_job_requirements(
+                extracted_skills,
+                [item.model_dump() for item in job_requirements],
+                job_id=job_pk,
+                pipeline_run_id=run.id,
+                candidate_mappings=candidate_mappings,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail="Saved job requirements are invalid") from exc
+        except Exception as exc:
+            logger.exception("Job requirement matching failed for job %s run %s", job_pk, run.id)
+            raise HTTPException(status_code=503, detail="Job-specific skill matching is unavailable") from exc
+
+    has_requirements = bool(job_requirements)
     return JobMatchingResponse(
         job=job_response,
         run=PipelineRunResponse.model_validate(run),
-        matching_basis="Unified AI pipeline matching against the job's target ESCO occupation.",
-        job_specific_required_skills_applied=False,
+        matching_basis=(
+            "Occupation-based analysis comes from the unified pipeline target ESCO occupation. "
+            "Job-specific analysis separately compares pipeline-extracted candidate skills "
+            "with this job's stored requirements."
+        ),
+        job_specific_required_skills_applied=(
+            has_requirements and job_specific_matching is not None
+            and job_specific_matching.get("status") == "completed"
+        ),
+        job_specific_matching=job_specific_matching,
     )
 
 

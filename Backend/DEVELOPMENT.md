@@ -1,5 +1,13 @@
 # Backend development dependencies
 
+Configure `DATABASE_URL` and `SECRET_KEY` from `Backend/.env.example` without
+committing local values. The frontend reads `NEXT_PUBLIC_API_BASE_URL` from
+`Frontend/.env.example`. Start the API from the repository's `Backend`
+directory with `python -m uvicorn Main:app --reload --port 8001`; start the UI
+from `Frontend` with `npm run dev`. The backend requires PostgreSQL configured
+by `DATABASE_URL`; do not run Alembic migrations against a shared database
+without explicit authorization.
+
 Install the backend runtime dependencies and ordinary test dependencies from the repository root:
 
 ```powershell
@@ -15,8 +23,16 @@ python -m pip install -r Backend/Requirements-ai-test.txt
 python -m pytest Tests/AI/test_skill_extractor.py
 ```
 
+Run job-specific matching unit tests from `Backend` with
+`python -m unittest discover -s tests -v`. Frontend checks are run from
+`Frontend` using `npm test`, `npm run lint`, and `npm run build`.
+
 The first embedding test run may download the `sentence-transformers/all-MiniLM-L6-v2` model data.
 This dependency and model are not required by the ordinary backend runtime manifest.
+Job-matching unit tests stub embedding output and ESCO URI lookups, so they do
+not download model weights or require network access. Runtime job matching uses
+the local ESCO taxonomy for URI validation and the optional embedding package
+for non-exact skill-name comparisons.
 
 ## Runtime dependency manifest review
 

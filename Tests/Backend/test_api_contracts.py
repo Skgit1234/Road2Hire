@@ -22,6 +22,7 @@ _previous_secret_key = os.environ.get("SECRET_KEY")
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["SECRET_KEY"] = "database-independent-test-key-for-tests-only-2026"
 
+from Api import jobs as jobs_api  # noqa: E402
 from Api import resume as resume_api  # noqa: E402
 from Api.profile import get_current_user  # noqa: E402
 from Core.database import get_db  # noqa: E402
@@ -385,6 +386,203 @@ def test_assistant_requires_authentication(client):
     )
 
     assert response.status_code == 401
+
+
+def test_job_matching_requires_authentication_and_hides_unowned_jobs(client):
+    payload = {"resume_id": 42}
+    unauthenticated = client.post("/jobs/9/matches", json=payload)
+    assert unauthenticated.status_code == 401
+
+    authenticate_as(client)
+    # The database-independent fake returns no job for this user's ownership
+    # scoped lookup, so the pipeline is never invoked.
+    unowned = client.post("/jobs/9/matches", json=payload)
+    assert unowned.status_code == 404
+    assert unowned.json() == {"detail": "Job not found"}
+
+
+def _job_matching_fixtures(run_status="completed"):
+    now = datetime.now(timezone.utc)
+    job = SimpleNamespace(
+        id=9,
+        user_id=7,
+        title="Backend Engineer",
+        description="Build and maintain backend services.",
+        target_occupation="Software Developer",
+        required_skills=[
+            {"skill_name": "Python", "importance": "essential", "canonical_uri": None},
+            {"skill_name": "PostgreSQL", "importance": "optional", "canonical_uri": "https://example.test/esco/postgresql"},
+        ],
+        created_at=now,
+        updated_at=now,
+    )
+    resume = SimpleNamespace(
+        id=42,
+        user_id=7,
+        original_name="candidate.pdf",
+        stored_name="stored-candidate.pdf",
+        file_path="/private/uploads/stored-candidate.pdf",
+        uploaded_at=now,
+    )
+    run = SimpleNamespace(
+        id=123,
+        status=run_status,
+        selection_mode="explicit",
+        target_occupation_uri="https://example.test/esco/occupation/software-developer",
+        target_occupation_title="Software Developer",
+        overall_skill_coverage_score=0.75 if run_status == "completed" else None,
+        essential_skill_coverage_score=1.0 if run_status == "completed" else None,
+        optional_skill_coverage_score=0.0 if run_status == "completed" else None,
+        readiness_class="developing" if run_status == "completed" else None,
+        is_ood=False,
+        canonical_output={
+            "skills": {
+                "extracted_skills": [
+                    {"skill": "Python", "source_sections": ["experience"]},
+                    {"skill": "PostgreSQL", "source_sections": ["projects"]},
+                ],
+                "esco_mappings": [
+                    {"skill": "Python", "ESCO_Skill_Id": "https://example.test/esco/python"},
+                    {"skill": "PostgreSQL", "ESCO_Skill_Id": "https://example.test/esco/postgresql"},
+                ],
+            }
+        },
+        error_code="PIPELINE_EXECUTION_ERROR" if run_status == "failed" else None,
+        error_stage="pipeline_execution" if run_status == "failed" else None,
+        error_message="Pipeline execution failed." if run_status == "failed" else None,
+        created_at=now,
+        completed_at=now if run_status == "completed" else None,
+    )
+    return job, resume, run
+
+
+class MatchQuery(EmptyQuery):
+    def __init__(self, result):
+        self.result = result
+
+    def first(self):
+        return self.result
+
+
+class JobResumeDatabase(EmptyDatabase):
+    def __init__(self, job, resume):
+        self.results = iter((job, resume))
+        self.rollback_called = False
+
+    def query(self, *_args, **_kwargs):
+        return MatchQuery(next(self.results))
+
+    def rollback(self):
+        self.rollback_called = True
+
+
+def test_job_matching_returns_pipeline_and_job_specific_result(client, monkeypatch):
+    user = authenticate_as(client)
+    job, resume, run = _job_matching_fixtures()
+    database = JobResumeDatabase(job, resume)
+    app.dependency_overrides[get_db] = lambda: database
+    pipeline_calls = []
+    matching_calls = []
+    expected_matching = {
+        "job_id": 9,
+        "pipeline_run_id": 123,
+        "status": "completed",
+        "requirements": [
+            {"skill_name": "Python", "importance": "essential", "matched": True},
+        ],
+        "scores": {"essential": 1.0, "optional": 0.0, "overall": 0.75},
+    }
+
+    def pipeline_stub(*, user, resume, target_occupation):
+        pipeline_calls.append((user, resume, target_occupation))
+        return run
+
+    def matching_stub(candidate_skills, requirements, **kwargs):
+        matching_calls.append((candidate_skills, requirements, kwargs))
+        return expected_matching
+
+    monkeypatch.setattr(jobs_api, "run_pipeline_for_resume", pipeline_stub)
+    monkeypatch.setattr(jobs_api, "match_job_requirements", matching_stub)
+
+    response = client.post("/jobs/9/matches", json={"resume_id": 42})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job"]["id"] == 9
+    assert body["run"]["id"] == 123
+    assert body["matching_basis"] == (
+        "Occupation-based analysis comes from the unified pipeline target ESCO occupation. "
+        "Job-specific analysis separately compares pipeline-extracted candidate skills "
+        "with this job's stored requirements."
+    )
+    assert body["job_specific_required_skills_applied"] is True
+    assert body["job_specific_matching"] == expected_matching
+
+    assert len(pipeline_calls) == 1
+    pipeline_user, pipeline_resume, target_occupation = pipeline_calls[0]
+    assert pipeline_user.id == user.id
+    assert pipeline_resume.id == resume.id
+    assert pipeline_resume.user_id == user.id
+    assert target_occupation == job.target_occupation
+    assert database.rollback_called
+
+    assert len(matching_calls) == 1
+    candidate_skills, requirements, matching_kwargs = matching_calls[0]
+    assert candidate_skills == run.canonical_output["skills"]["extracted_skills"]
+    assert requirements == job.required_skills
+    assert matching_kwargs == {
+        "job_id": 9,
+        "pipeline_run_id": 123,
+        "candidate_mappings": run.canonical_output["skills"]["esco_mappings"],
+    }
+
+
+def test_job_matching_failed_pipeline_returns_run_without_job_match(client, monkeypatch):
+    authenticate_as(client)
+    job, resume, run = _job_matching_fixtures(run_status="failed")
+    app.dependency_overrides[get_db] = lambda: JobResumeDatabase(job, resume)
+    pipeline_calls = []
+    matching_calls = []
+
+    monkeypatch.setattr(
+        jobs_api,
+        "run_pipeline_for_resume",
+        lambda **kwargs: pipeline_calls.append(kwargs) or run,
+    )
+    monkeypatch.setattr(
+        jobs_api,
+        "match_job_requirements",
+        lambda *args, **kwargs: matching_calls.append((args, kwargs)),
+    )
+
+    response = client.post("/jobs/9/matches", json={"resume_id": 42})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["run"]["id"] == 123
+    assert body["run"]["status"] == "failed"
+    assert body["job_specific_matching"] is None
+    assert body["job_specific_required_skills_applied"] is False
+    assert len(pipeline_calls) == 1
+    assert matching_calls == []
+
+
+def test_job_matching_rejects_resume_not_owned_by_authenticated_user(client, monkeypatch):
+    authenticate_as(client)
+    job, _resume, _run = _job_matching_fixtures()
+    app.dependency_overrides[get_db] = lambda: JobResumeDatabase(job, None)
+    pipeline_calls = []
+    monkeypatch.setattr(
+        jobs_api,
+        "run_pipeline_for_resume",
+        lambda **kwargs: pipeline_calls.append(kwargs),
+    )
+
+    response = client.post("/jobs/9/matches", json={"resume_id": 42})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Resume not found"}
+    assert pipeline_calls == []
 
 @pytest.mark.parametrize(
     ("payload", "expected_status", "expected_detail"),

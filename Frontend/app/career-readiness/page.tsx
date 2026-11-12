@@ -28,7 +28,7 @@ function formatDate(value: string | null): string {
 }
 
 export default function CareerReadinessPage() {
-  const { session } = useAuth();
+  const { session, isRestoring } = useAuth();
   const [state, setState] = useState<RequestState>("loading");
   const [result, setResult] = useState<CareerReadinessPredictionResponse | null>(null);
   const [error, setError] = useState("");
@@ -102,7 +102,11 @@ export default function CareerReadinessPage() {
           </span>
         </header>
 
-        {!session ? (
+        {isRestoring ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" role="status">
+            Restoring your session…
+          </section>
+        ) : !session ? (
           <section className="rounded-2xl border border-amber-200 bg-white p-6 text-sm text-amber-900" role="status">
             Sign in to view the career-readiness assessment for your account.{" "}
             <Link className="font-semibold underline" href="/login">Go to sign in</Link>

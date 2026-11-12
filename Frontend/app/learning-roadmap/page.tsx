@@ -64,7 +64,7 @@ function getResourceLabel(resource: Record<string, string>, index: number) {
 }
 
 export default function LearningRoadmapPage() {
-  const { session } = useAuth();
+  const { session, isRestoring } = useAuth();
   const [state, setState] = useState<PageState>("loading");
   const [roadmap, setRoadmap] =
     useState<PipelineLearningRoadmapResponse | null>(null);
@@ -220,7 +220,14 @@ export default function LearningRoadmapPage() {
           </span>
         </header>
 
-        {!session ? (
+        {isRestoring ? (
+          <section
+            className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
+            role="status"
+          >
+            Restoring your session…
+          </section>
+        ) : !session ? (
           <section
             className="rounded-2xl border border-amber-200 bg-white p-6 text-sm text-amber-900"
             role="status"
