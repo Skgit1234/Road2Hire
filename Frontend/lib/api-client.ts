@@ -33,6 +33,22 @@ export type ResumeRecord = {
   download_url?: string;
 };
 
+export type CandidateProfileResponse = {
+  id: number;
+  user_id: number;
+  resume_id: number | null;
+  skills: Array<{
+    skill: string;
+    source_sections: string[];
+    occurrences: Array<{ section: string; text: string; start: number; end: number }>;
+  }>;
+  education: string[];
+  experience: string[];
+  projects: string[];
+  certifications: string[];
+  updated_at: string;
+};
+
 export type JobSkillRequirement = {
   skill_name: string;
   importance: "essential" | "optional";
@@ -147,61 +163,7 @@ export type ResumeAnalysisResponse = {
 };
 
 
-export type CareerReadinessResponse = {
-  score: number | null;
-  formula: string;
-  analysis_id: number | null;
-  target_role: string | null;
-  message?: string;
-  matched_skills?: string[];
-  required_skills?: string[];
-  missing_skills?: string[];
-  created_at?: string;
-};
-
-export type LearningResource = {
-  resource_id: string;
-  skill_name: string;
-  category: string | null;
-  provider: string | null;
-  course_title: string;
-  difficulty: string | null;
-  duration_hours: string | null;
-  certificate: string | null;
-  course_url: string | null;
-};
-
 export type LearningTaskStatus = "not_started" | "in_progress" | "completed";
-
-export type LearningTask = {
-  id: number;
-  skill_name: string;
-  status: LearningTaskStatus;
-  progress: number;
-  resources: LearningResource[];
-};
-
-export type LearningRoadmapResponse = {
-  analysis_id: number | null;
-  target_role: string | null;
-  tasks: LearningTask[];
-  resource_availability: "awaiting_skill_gap_analysis" | "available" | "no_matching_resources" | "dataset_empty";
-};
-
-export type TaskProgressUpdate = {
-  status?: LearningTaskStatus;
-  progress?: number;
-};
-
-export type TaskProgressResponse = {
-  id: number;
-  skill_gap_id: number;
-  skill_name: string;
-  status: LearningTaskStatus;
-  progress: number;
-  updated_at: string;
-};
-
 export type DashboardResponse = {
   resume_count: number;
   skill_gap_count: number;
@@ -215,14 +177,14 @@ export type DashboardResponse = {
     id: number;
     resume_id: number;
     target_role: string;
-    match_score: number;
+    match_score: number | null;
     created_at: string;
   } | null;
 };
 
 export type ActivityItem =
   | { type: "resume_uploaded"; id: number; timestamp: string; resume_name: string }
-  | { type: "skill_gap_analyzed"; id: number; timestamp: string; resume_id: number; target_role: string; match_score: number }
+  | { type: "skill_gap_analyzed"; id: number; timestamp: string; resume_id: number; target_role: string; match_score: number | null }
   | { type: "task_progress_updated"; id: number; timestamp: string; pipeline_run_id: number; skill_name: string; status: LearningTaskStatus; progress: number };
 
 export type ActivityResponse = { items: ActivityItem[]; limit: number };
@@ -343,6 +305,48 @@ export async function getCurrentProfile(
     headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
   }, fetchRequest);
   return parseAuthUser(payload);
+}
+
+function isCandidateProfile(value: unknown): value is CandidateProfileResponse {
+  const isStringArray = (item: unknown): item is string[] =>
+    Array.isArray(item) && item.every((entry) => typeof entry === "string");
+  const isTimestamp = (item: unknown): item is string =>
+    typeof item === "string" && !Number.isNaN(Date.parse(item));
+
+  return typeof value === "object" && value !== null && !Array.isArray(value) &&
+    "id" in value && typeof value.id === "number" && Number.isInteger(value.id) && value.id > 0 &&
+    "user_id" in value && typeof value.user_id === "number" && Number.isInteger(value.user_id) && value.user_id > 0 &&
+    "resume_id" in value && (value.resume_id === null || (typeof value.resume_id === "number" && Number.isInteger(value.resume_id) && value.resume_id > 0)) &&
+    "skills" in value && Array.isArray(value.skills) && value.skills.every((skill: unknown) =>
+      typeof skill === "object" && skill !== null && !Array.isArray(skill) &&
+      "skill" in skill && typeof skill.skill === "string" &&
+      "source_sections" in skill && isStringArray(skill.source_sections) &&
+      "occurrences" in skill && Array.isArray(skill.occurrences) && skill.occurrences.every((occurrence: unknown) =>
+        typeof occurrence === "object" && occurrence !== null && !Array.isArray(occurrence) &&
+        "section" in occurrence && typeof occurrence.section === "string" &&
+        "text" in occurrence && typeof occurrence.text === "string" &&
+        "start" in occurrence && typeof occurrence.start === "number" && Number.isInteger(occurrence.start) && occurrence.start >= 0 &&
+        "end" in occurrence && typeof occurrence.end === "number" && Number.isInteger(occurrence.end) && occurrence.end >= occurrence.start)) &&
+    "education" in value && isStringArray(value.education) &&
+    "experience" in value && isStringArray(value.experience) &&
+    "projects" in value && isStringArray(value.projects) &&
+    "certifications" in value && isStringArray(value.certifications) &&
+    "updated_at" in value && isTimestamp(value.updated_at);
+}
+
+export async function getCandidateProfile(
+  accessToken: string,
+  fetchRequest: typeof fetch = fetch,
+): Promise<CandidateProfileResponse> {
+  if (!accessToken.trim()) throw new Error("Sign in to view your candidate profile.");
+  const payload = await requestJson("/profile/candidate", {
+    method: "GET",
+    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+  }, fetchRequest);
+  if (!isCandidateProfile(payload)) {
+    throw new Error("The API returned an invalid candidate profile response.");
+  }
+  return payload;
 }
 
 export async function updateCurrentProfile(
@@ -686,173 +690,7 @@ export async function getResumeAnalysis(
   return parseResumeAnalysis(payload, resumeId);
 }
 
-function parseCareerReadiness(payload: unknown): CareerReadinessResponse {
-  const isSkillList = (value: unknown) => Array.isArray(value) && value.every((skill) => typeof skill === "string");
-  if (
-    typeof payload !== "object" || payload === null ||
-    !("score" in payload) || (payload.score !== null && (typeof payload.score !== "number" || !Number.isFinite(payload.score))) ||
-    !("formula" in payload) || typeof payload.formula !== "string" ||
-    !("analysis_id" in payload) || (payload.analysis_id !== null && (typeof payload.analysis_id !== "number" || !Number.isInteger(payload.analysis_id))) ||
-    !("target_role" in payload) || (payload.target_role !== null && typeof payload.target_role !== "string")
-  ) {
-    throw new Error("The API returned an invalid career-readiness response.");
-  }
-
-  if (payload.score === null) {
-    if (!("message" in payload) || typeof payload.message !== "string" || payload.analysis_id !== null || payload.target_role !== null) {
-      throw new Error("The API returned an invalid career-readiness response.");
-    }
-    return {
-      score: null,
-      formula: payload.formula,
-      analysis_id: null,
-      target_role: null,
-      message: payload.message,
-    };
-  }
-
-  if (
-    payload.score < 0 || payload.score > 100 || payload.analysis_id === null ||
-    !payload.target_role ||
-    !("matched_skills" in payload) || !isSkillList(payload.matched_skills) ||
-    !("required_skills" in payload) || !isSkillList(payload.required_skills) ||
-    !("missing_skills" in payload) || !isSkillList(payload.missing_skills) ||
-    !("created_at" in payload) || typeof payload.created_at !== "string" || Number.isNaN(Date.parse(payload.created_at))
-  ) {
-    throw new Error("The API returned an invalid career-readiness response.");
-  }
-
-  return payload as CareerReadinessResponse;
-}
-
-export async function getCareerReadiness(
-  accessToken: string,
-  fetchRequest: typeof fetch = fetch,
-): Promise<CareerReadinessResponse> {
-  if (!accessToken.trim()) throw new Error("Sign in to view career readiness.");
-  const payload = await requestJson("/career-readiness", {
-    method: "GET",
-    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
-  }, fetchRequest);
-  return parseCareerReadiness(payload);
-}
-
 const taskStatuses: readonly LearningTaskStatus[] = ["not_started", "in_progress", "completed"];
-
-function isLearningResource(value: unknown): value is LearningResource {
-  const optionalTextFields = ["category", "provider", "difficulty", "duration_hours", "certificate", "course_url"] as const;
-  if (typeof value !== "object" || value === null) return false;
-  const resource = value as Record<string, unknown>;
-  return typeof resource.resource_id === "string" &&
-    typeof resource.skill_name === "string" &&
-    typeof resource.course_title === "string" &&
-    optionalTextFields.every((field) => field in resource && (resource[field] === null || typeof resource[field] === "string"));
-}
-
-function isLearningTask(value: unknown): value is LearningTask {
-  return typeof value === "object" && value !== null &&
-    "id" in value && typeof value.id === "number" && Number.isInteger(value.id) && value.id > 0 &&
-    "skill_name" in value && typeof value.skill_name === "string" &&
-    "status" in value && typeof value.status === "string" && taskStatuses.includes(value.status as LearningTaskStatus) &&
-    "progress" in value && typeof value.progress === "number" && Number.isInteger(value.progress) && value.progress >= 0 && value.progress <= 100 &&
-    "resources" in value && Array.isArray(value.resources) && value.resources.every(isLearningResource);
-}
-
-function parseLearningRoadmap(payload: unknown): LearningRoadmapResponse {
-  const resourceStates: LearningRoadmapResponse["resource_availability"][] = [
-    "awaiting_skill_gap_analysis", "available", "no_matching_resources", "dataset_empty",
-  ];
-  if (
-    typeof payload !== "object" || payload === null ||
-    !("analysis_id" in payload) || (payload.analysis_id !== null && (typeof payload.analysis_id !== "number" || !Number.isInteger(payload.analysis_id) || payload.analysis_id <= 0)) ||
-    !("target_role" in payload) || (payload.target_role !== null && typeof payload.target_role !== "string") ||
-    !("tasks" in payload) || !Array.isArray(payload.tasks) || !payload.tasks.every(isLearningTask) ||
-    !("resource_availability" in payload) || typeof payload.resource_availability !== "string" || !resourceStates.includes(payload.resource_availability as LearningRoadmapResponse["resource_availability"])
-  ) {
-    throw new Error("The API returned an invalid learning-roadmap response.");
-  }
-
-  if (payload.analysis_id === null) {
-    if (payload.target_role !== null || payload.tasks.length !== 0 || payload.resource_availability !== "awaiting_skill_gap_analysis") {
-      throw new Error("The API returned an invalid learning-roadmap response.");
-    }
-  } else if (typeof payload.target_role !== "string" || !payload.target_role || payload.resource_availability === "awaiting_skill_gap_analysis") {
-    throw new Error("The API returned an invalid learning-roadmap response.");
-  }
-  return payload as LearningRoadmapResponse;
-}
-
-export async function getLearningRoadmap(
-  accessToken: string,
-  fetchRequest: typeof fetch = fetch,
-): Promise<LearningRoadmapResponse> {
-  if (!accessToken.trim()) throw new Error("Sign in to view your learning roadmap.");
-  const payload = await requestJson("/learning-roadmap", {
-    method: "GET",
-    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
-  }, fetchRequest);
-  return parseLearningRoadmap(payload);
-}
-
-export async function prepareLearningRoadmap(
-  accessToken: string,
-  fetchRequest: typeof fetch = fetch,
-): Promise<LearningRoadmapResponse> {
-  if (!accessToken.trim()) throw new Error("Sign in to view your learning roadmap.");
-  const payload = await requestJson("/learning-roadmap/prepare", {
-    method: "POST",
-    headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
-  }, fetchRequest);
-  return parseLearningRoadmap(payload);
-}
-
-function parseTaskProgress(payload: unknown, requestedTaskId: number): TaskProgressResponse {
-  if (
-    typeof payload !== "object" || payload === null ||
-    !("id" in payload) || payload.id !== requestedTaskId ||
-    !("skill_gap_id" in payload) || typeof payload.skill_gap_id !== "number" || !Number.isInteger(payload.skill_gap_id) || payload.skill_gap_id <= 0 ||
-    !("skill_name" in payload) || typeof payload.skill_name !== "string" ||
-    !("status" in payload) || typeof payload.status !== "string" || !taskStatuses.includes(payload.status as LearningTaskStatus) ||
-    !("progress" in payload) || typeof payload.progress !== "number" || !Number.isInteger(payload.progress) || payload.progress < 0 || payload.progress > 100 ||
-    !("updated_at" in payload) || typeof payload.updated_at !== "string" || Number.isNaN(Date.parse(payload.updated_at))
-  ) {
-    throw new Error("The API returned an invalid task-progress response.");
-  }
-  return payload as TaskProgressResponse;
-}
-
-export async function updateTaskProgress(
-  taskId: number,
-  update: TaskProgressUpdate,
-  accessToken: string,
-  fetchRequest: typeof fetch = fetch,
-): Promise<TaskProgressResponse> {
-  if (!accessToken.trim()) throw new Error("Sign in to update task progress.");
-  if (!Number.isInteger(taskId) || taskId <= 0) throw new Error("Choose a valid roadmap task.");
-  const fields = Object.keys(update);
-  if (fields.length === 0 || fields.some((field) => field !== "progress" && field !== "status")) {
-    throw new Error("Provide a task status or progress update.");
-  }
-  if (update.progress !== undefined && (!Number.isInteger(update.progress) || update.progress < 0 || update.progress > 100)) {
-    throw new Error("Task progress must be a whole number from 0 to 100.");
-  }
-  if (update.status !== undefined && !taskStatuses.includes(update.status)) {
-    throw new Error("Choose a valid task status.");
-  }
-  if ((update.status === "completed" && update.progress !== undefined && update.progress !== 100) ||
-      (update.status === "not_started" && update.progress !== undefined && update.progress !== 0) ||
-      (update.status === "in_progress" && update.progress === 100)) {
-    throw new Error("Task status and progress values are inconsistent.");
-  }
-
-  const payload = await requestJson(`/tasks/${taskId}`, {
-    method: "PATCH",
-    headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify(update),
-  }, fetchRequest);
-  return parseTaskProgress(payload, taskId);
-}
-
 function parseDashboard(payload: unknown): DashboardResponse {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -881,8 +719,10 @@ function parseDashboard(payload: unknown): DashboardResponse {
       !Number.isInteger(latestSkillGap.id) || (latestSkillGap.id as number) <= 0 ||
       !Number.isInteger(latestSkillGap.resume_id) || (latestSkillGap.resume_id as number) <= 0 ||
       typeof latestSkillGap.target_role !== "string" ||
-      typeof latestSkillGap.match_score !== "number" || !Number.isFinite(latestSkillGap.match_score) ||
-      latestSkillGap.match_score < 0 || latestSkillGap.match_score > 100 || !isTimestamp(latestSkillGap.created_at))) {
+      !(latestSkillGap.match_score === null || (
+        typeof latestSkillGap.match_score === "number" && Number.isFinite(latestSkillGap.match_score) &&
+        latestSkillGap.match_score >= 0 && latestSkillGap.match_score <= 100
+      )) || !isTimestamp(latestSkillGap.created_at))) {
     throw new Error("The API returned an invalid dashboard response.");
   }
   return payload as DashboardResponse;
@@ -918,7 +758,7 @@ function parseActivity(payload: unknown): ActivityResponse {
     }
     if (item.type === "skill_gap_analyzed" && "resume_id" in item && typeof item.resume_id === "number" &&
         "target_role" in item && typeof item.target_role === "string" &&
-        "match_score" in item && typeof item.match_score === "number" && Number.isFinite(item.match_score)) {
+        "match_score" in item && (item.match_score === null || (typeof item.match_score === "number" && Number.isFinite(item.match_score) && item.match_score >= 0 && item.match_score <= 100))) {
       return item as ActivityItem;
     }
     if (item.type === "task_progress_updated" && "pipeline_run_id" in item &&

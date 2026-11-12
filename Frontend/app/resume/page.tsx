@@ -2,17 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  CertificationsSection,
-  EducationSection,
-  ExperienceSection,
-  ProfileSkills,
-  ProjectsSection,
-} from "@/components/profile/ResumeProfileSections";
 import { validateResumeFile } from "@/components/profile/resume-upload-service";
 import { useCandidateProfile } from "@/components/profile/CandidateProfileProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { deleteResume, downloadResume, getResumeAnalysis, listResumes, uploadResume, type ResumeAnalysisResponse, type ResumeRecord } from "@/lib/api-client";
+import { deleteResume, downloadResume, getCandidateProfile, getResumeAnalysis, listResumes, uploadResume, type CandidateProfileResponse, type ResumeAnalysisResponse, type ResumeRecord } from "@/lib/api-client";
 
 type UploadState = "empty" | "selected" | "uploading" | "success" | "error";
 type ListState = "loading" | "ready" | "error";
@@ -52,6 +45,9 @@ export default function ResumePage() {
   const resumeActionLock = useRef(false);
   const previewUrl = useRef<string | null>(null);
   const [previewLink, setPreviewLink] = useState<string | null>(null);
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfileResponse | null>(null);
+  const [candidateProfileState, setCandidateProfileState] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [candidateProfileMessage, setCandidateProfileMessage] = useState("");
 
   useEffect(() => () => { if (previewUrl.current) URL.revokeObjectURL(previewUrl.current); }, []);
 
@@ -68,6 +64,27 @@ export default function ResumePage() {
     }
   }
 
+  async function refreshCandidateProfile(token: string, active = () => true) {
+    setCandidateProfileState("loading");
+    setCandidateProfileMessage("");
+    try {
+      const result = await getCandidateProfile(token);
+      if (active()) {
+        setCandidateProfile(result);
+        setCandidateProfileState("ready");
+      }
+    } catch (error) {
+      if (!active()) return;
+      if (typeof error === "object" && error !== null && "status" in error && error.status === 404) {
+        setCandidateProfile(null);
+        setCandidateProfileState("empty");
+        return;
+      }
+      setCandidateProfileState("error");
+      setCandidateProfileMessage(error instanceof Error ? error.message : "Could not load your candidate profile.");
+    }
+  }
+
   async function analyzeResume(resume: ResumeRecord) {
     if (!session) return;
     const requestId = ++analysisRequest.current;
@@ -80,6 +97,7 @@ export default function ResumePage() {
       if (requestId === analysisRequest.current) {
         setAnalysis(result);
         setAnalysisState("ready");
+        void refreshCandidateProfile(session.accessToken);
       }
     } catch (error) {
       if (requestId === analysisRequest.current) {
@@ -103,6 +121,29 @@ export default function ResumePage() {
         setListState("error");
         setListMessage(error instanceof Error ? error.message : "Could not load your resumes.");
       }
+    });
+    return () => { active = false; };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    void Promise.resolve().then(() => getCandidateProfile(session.accessToken)).then((result) => {
+      if (active) {
+        setCandidateProfile(result);
+        setCandidateProfileState("ready");
+        setCandidateProfileMessage("");
+      }
+    }).catch((error: unknown) => {
+      if (!active) return;
+      if (typeof error === "object" && error !== null && "status" in error && error.status === 404) {
+        setCandidateProfile(null);
+        setCandidateProfileState("empty");
+        setCandidateProfileMessage("");
+        return;
+      }
+      setCandidateProfileState("error");
+      setCandidateProfileMessage(error instanceof Error ? error.message : "Could not load your candidate profile.");
     });
     return () => { active = false; };
   }, [session]);
@@ -236,7 +277,7 @@ export default function ResumePage() {
         <p className="mb-1 text-sm font-semibold text-primary">Resume intelligence</p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Resume and candidate profile</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Upload a PDF resume and review files saved to your account. Profile details appear only after a connected service returns verified extraction data.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Upload a PDF resume, review files saved to your account, and inspect profile details after resume analysis.</p>
         </div><Link href="/" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900">Back to dashboard</Link></div>
       </header>
 
@@ -312,9 +353,16 @@ export default function ResumePage() {
         </div>}
       </section>
 
-      <section className="mt-8" aria-labelledby="candidate-profile-heading"><div className="mb-4"><p className="text-sm font-semibold text-primary">Candidate profile</p><h2 id="candidate-profile-heading" className="mt-1 text-2xl font-bold text-slate-900">Structured extracted information</h2><p className="mt-1 text-sm text-slate-500">The backend analysis currently returns raw section text and keyword matches, not the structured resume-extraction.v1 contract. Profile fields remain unavailable from this response.</p></div>
-        <p className="mb-4 rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">Your candidate profile will appear here when resume processing is connected.</p>
-        <div className="grid gap-4 md:grid-cols-2"><ProfileSkills data={null} /><EducationSection data={null} /><ExperienceSection data={null} /><ProjectsSection data={null} /><CertificationsSection data={null} /></div>
+      <section className="mt-8" aria-labelledby="candidate-profile-heading"><div className="mb-4"><p className="text-sm font-semibold text-primary">Candidate profile</p><h2 id="candidate-profile-heading" className="mt-1 text-2xl font-bold text-slate-900">Extracted profile details</h2><p className="mt-1 text-sm text-slate-500">These fields come from the authenticated candidate-profile API and reflect the latest resume analysis. Extracted resume details are not independently verified.</p></div>
+        {isRestoring || candidateProfileState === "loading" ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Loading candidate profile…</p>
+          : !session ? <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600" role="status">Sign in to view your candidate profile.</p>
+          : candidateProfileState === "error" ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-5" role="alert"><p className="text-sm text-rose-800">{candidateProfileMessage}</p><button type="button" onClick={() => void refreshCandidateProfile(session.accessToken)} className="mt-3 text-sm font-semibold text-indigo-700 underline">Retry profile load</button></div>
+          : candidateProfileState === "empty" || !candidateProfile ? <p className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600" role="status">No candidate profile is available yet. Analyze a saved resume to populate it.</p>
+          : <div className="grid gap-4 md:grid-cols-2">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:col-span-2" aria-label="Extracted skills"><h3 className="font-semibold text-slate-900">Skills</h3>{candidateProfile.skills.length ? <ul className="mt-3 grid gap-3 sm:grid-cols-2">{candidateProfile.skills.map((skill, index) => <li key={`${skill.skill}-${index}`} className="rounded-xl bg-indigo-50 p-3"><p className="font-medium text-indigo-950">{skill.skill}</p><p className="mt-1 text-xs text-indigo-800">Sections: {skill.source_sections.join(", ") || "not recorded"}</p>{skill.occurrences.length > 0 && <ul className="mt-2 space-y-1">{skill.occurrences.map((item, occurrenceIndex) => <li key={`${item.section}-${item.start}-${occurrenceIndex}`} className="text-xs text-slate-700"><span className="font-medium">{item.section}:</span> {item.text}</li>)}</ul>}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">No skills were extracted.</p>}</section>
+            {(["education", "experience", "projects", "certifications"] as const).map((field) => <section key={field} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label={field}><h3 className="font-semibold capitalize text-slate-900">{field}</h3>{candidateProfile[field].length ? <ul className="mt-3 space-y-2">{candidateProfile[field].map((item, index) => <li key={`${field}-${index}`} className="whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{item}</li>)}</ul> : <p className="mt-2 text-sm text-slate-500">No {field} information was extracted.</p>}</section>)}
+            <p className="text-xs text-slate-500 md:col-span-2">Last updated {new Date(candidateProfile.updated_at).toLocaleString()}.</p>
+          </div>}
       </section>
     </div>
   </main>;

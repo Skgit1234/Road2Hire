@@ -260,7 +260,7 @@ test("task progress update rejects malformed task responses", async () => {
     updatePipelineTaskProgress(
       "test-access-token",
       7,
-      { progress: 45 },
+      { status: "in_progress", progress: 45 },
       async () => Response.json({
         id: 7,
         pipeline_run_id: 12,

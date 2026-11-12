@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deleteResume, downloadResume, getResumeAnalysis, listResumes, uploadResume } from "../lib/api-client.ts";
+import { deleteResume, downloadResume, getCandidateProfile, getResumeAnalysis, listResumes, uploadResume } from "../lib/api-client.ts";
 import { MAX_RESUME_BYTES, validateResumeFile } from "../components/profile/resume-upload-service.ts";
 
 const record = {
@@ -29,6 +29,52 @@ const analysis = {
   skill_count: 1,
   skill_extraction_method: "knowledge_graph_keyword_matching",
 };
+
+const candidateProfile = {
+  id: 4,
+  user_id: 7,
+  resume_id: 12,
+  skills: [{
+    skill: "Python",
+    source_sections: ["skills"],
+    occurrences: [{ section: "skills", text: "Python and SQL", start: 0, end: 6 }],
+  }],
+  education: ["BSc Computer Science"],
+  experience: ["Software Developer at Example Co."],
+  projects: ["Road2Hire integration"],
+  certifications: ["Cloud Fundamentals"],
+  updated_at: "2026-01-02T03:04:05Z",
+};
+
+test("candidate profile request uses the authenticated backend contract", async () => {
+  let request;
+  const result = await getCandidateProfile("profile-token", async (url, options) => {
+    request = { url, options };
+    return Response.json(candidateProfile);
+  });
+
+  assert.match(request.url, /\/profile\/candidate$/);
+  assert.equal(request.options.method, "GET");
+  assert.equal(request.options.headers.Authorization, "Bearer profile-token");
+  assert.deepEqual(result, candidateProfile);
+});
+
+test("candidate profile rejects missing authentication, API errors, and malformed extracted evidence", async () => {
+  await assert.rejects(getCandidateProfile(" ", async () => {
+    throw new Error("fetch must not be called");
+  }), /Sign in to view your candidate profile/);
+
+  await assert.rejects(getCandidateProfile("profile-token", async () =>
+    Response.json({ detail: "Candidate profile not found" }, { status: 404 })), (error) => {
+    assert.equal(error.status, 404);
+    assert.equal(error.message, "Candidate profile not found");
+    return true;
+  });
+
+  await assert.rejects(getCandidateProfile("profile-token", async () =>
+    Response.json({ ...candidateProfile, skills: [{ ...candidateProfile.skills[0], occurrences: [{ section: "skills", text: "Python", start: -1, end: 6 }] }] })),
+  /invalid candidate profile response/);
+});
 
 test("upload sends required multipart fields and bearer authorization without setting multipart content type", async () => {
   let request;

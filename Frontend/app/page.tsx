@@ -196,12 +196,12 @@ export default function Dashboard() {
     { title: "Saved resumes", value: String(dashboard.resume_count), note: "Resumes on your account" },
     { title: "Skill gap analyses", value: String(dashboard.skill_gap_count), note: "Saved analyses" },
     { title: "Average skill match", value: dashboard.average_match_score === null ? "—" : `${dashboard.average_match_score}%`, note: "Across saved analyses" },
-    { title: "Latest target role", value: dashboard.latest_skill_gap?.target_role ?? "—", note: dashboard.latest_skill_gap ? `${dashboard.latest_skill_gap.match_score}% match` : "No skill gap analysis yet" },
+    { title: "Latest target role", value: dashboard.latest_skill_gap?.target_role ?? "—", note: dashboard.latest_skill_gap ? dashboard.latest_skill_gap.match_score === null ? "Match score unavailable" : `${dashboard.latest_skill_gap.match_score}% match` : "No skill gap analysis yet" },
   ] : [];
 
   function activityLabel(item: ActivityItem) {
     if (item.type === "resume_uploaded") return `Resume uploaded: ${item.resume_name}`;
-    if (item.type === "skill_gap_analyzed") return `Skill gap analyzed for ${item.target_role} (${item.match_score}% match)`;
+    if (item.type === "skill_gap_analyzed") return `Skill gap analyzed for ${item.target_role} (${item.match_score === null ? "match score unavailable" : `${item.match_score}% match`})`;
     return `Learning progress updated: ${item.skill_name} (${item.progress}%)`;
   }
 
@@ -232,7 +232,9 @@ export default function Dashboard() {
               <span aria-hidden="true">☾</span>
             </button>
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-sm font-semibold text-white">
-              A
+              <span role="img" aria-label={`Dashboard avatar: ${session?.profile.name ?? "Guest"}`}>
+                {session?.profile.name.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "G"}
+              </span>
             </div>
           </div>
         </header>

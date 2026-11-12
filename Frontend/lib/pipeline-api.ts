@@ -572,15 +572,23 @@ export async function updatePipelineTaskProgress(
 ): Promise<PipelineLearningTaskResponse> {
   requirePositiveId(taskId, "task ID");
 
-  if (update.status === undefined && update.progress === undefined) {
-    throw new Error("Provide a task status or progress update.");
-  }
   if (update.status !== undefined && !isTaskStatus(update.status)) {
     throw new Error("Invalid learning task status.");
   }
   if (update.progress !== undefined &&
       (!Number.isInteger(update.progress) || update.progress < 0 || update.progress > 100)) {
     throw new Error("Task progress must be an integer from 0 to 100.");
+  }
+  if (update.status === undefined || update.progress === undefined) {
+    throw new Error("Provide both a task status and progress value so the task remains consistent.");
+  }
+  const consistent = update.status === "completed"
+    ? update.progress === 100
+    : update.status === "not_started"
+      ? update.progress === 0
+      : update.progress >= 1 && update.progress <= 99;
+  if (!consistent) {
+    throw new Error("Task status and progress are inconsistent. Completed tasks must be 100%, not started tasks must be 0%, and in-progress tasks must be 1–99%.");
   }
 
   const payload = await authenticatedRequest(

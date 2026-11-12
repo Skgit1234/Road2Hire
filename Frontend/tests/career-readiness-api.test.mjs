@@ -1,21 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCareerReadiness } from "../lib/api-client.ts";
+import { getPipelineCareerReadiness } from "../lib/pipeline-api.ts";
 
 const completed = {
-  score: 75,
-  formula: "Use the most recent saved skill-gap match_score.",
-  analysis_id: 12,
-  target_role: "Fullstack Developer",
-  matched_skills: ["JavaScript", "React", "Java"],
-  required_skills: ["JavaScript", "React", "Java", "SQL"],
-  missing_skills: ["SQL"],
-  created_at: "2026-10-19T23:16:17.148417+05:30",
+  pipeline_run_id: 12,
+  resume_id: 7,
+  completed_at: "2026-10-19T23:16:17.148417+05:30",
+  predicted_class: "Developing",
+  class_probabilities: { Developing: 0.75, "Job Ready": 0.2, "Not Ready": 0.05 },
+  model_version: "0.1.0-exploratory",
+  model_type: "LogisticRegression",
+  is_experimental: true,
+  is_ood: false,
+  ood_warnings: [],
+  pipeline_warnings: [],
+  training_sample_count: 71,
+  training_class_distribution: { Developing: 52, "Job Ready": 16, "Not Ready": 3 },
+  feature_values: { skills_count: 5 },
+  feature_diagnostics: {},
+  limitations: ["Experimental model"],
 };
 
-test("career-readiness request uses GET and bearer auth without adding query parameters", async () => {
+test("career readiness uses the backend prediction contract and bearer auth", async () => {
   let request;
-  const result = await getCareerReadiness("readiness-token", async (url, options) => {
+  const result = await getPipelineCareerReadiness("readiness-token", undefined, async (url, options) => {
     request = { url: new URL(url), options };
     return Response.json(completed);
   });
@@ -27,34 +35,24 @@ test("career-readiness request uses GET and bearer auth without adding query par
   assert.deepEqual(result, completed);
 });
 
-test("career-readiness request requires authentication before fetching", async () => {
-  await assert.rejects(getCareerReadiness("  ", async () => {
-    throw new Error("fetch must not be called");
-  }), /Sign in/);
-});
-
-test("career-readiness parses the backend no-analysis response distinctly", async () => {
-  const result = await getCareerReadiness("token", async () => Response.json({
-    score: null,
-    formula: "Use the most recent saved skill-gap match_score.",
-    analysis_id: null,
-    target_role: null,
-    message: "Run a skill-gap analysis to calculate a readiness score.",
-  }));
-  assert.equal(result.score, null);
-  assert.equal(result.analysis_id, null);
-  assert.match(result.message, /Run a skill-gap analysis/);
-});
-
-test("career-readiness surfaces API and network errors and rejects malformed results", async () => {
-  await assert.rejects(getCareerReadiness("token", async () => Response.json(
-    { detail: "Not authenticated" }, { status: 401 },
-  )), (error) => {
-    assert.equal(error.status, 401);
-    assert.equal(error.message, "Not authenticated");
-    return true;
+test("career readiness accepts a selected run and requires authentication", async () => {
+  let requestedUrl;
+  const result = await getPipelineCareerReadiness("readiness-token", 12, async (url) => {
+    requestedUrl = new URL(url);
+    return Response.json(completed);
   });
-  await assert.rejects(getCareerReadiness("token", async () => { throw new Error("offline"); }), /Could not connect to the Road2Hire API/);
-  await assert.rejects(getCareerReadiness("token", async () => Response.json({ ...completed, score: 101 })), /invalid career-readiness response/);
-  await assert.rejects(getCareerReadiness("token", async () => Response.json({ ...completed, matched_skills: "Java" })), /invalid career-readiness response/);
+  assert.equal(requestedUrl.pathname, "/career-readiness/runs/12");
+  assert.equal(result.pipeline_run_id, 12);
+
+  await assert.rejects(getPipelineCareerReadiness(" ", undefined, async () => {
+    throw new Error("fetch must not be called");
+  }), /sign in/i);
+});
+
+test("career readiness surfaces backend and network errors and rejects malformed output", async () => {
+  await assert.rejects(getPipelineCareerReadiness("token", undefined, async () => Response.json(
+    { detail: "No completed pipeline run is available" }, { status: 404 },
+  )), (error) => error.status === 404 && error.message === "No completed pipeline run is available");
+  await assert.rejects(getPipelineCareerReadiness("token", undefined, async () => { throw new Error("offline"); }), /Could not connect to the Road2Hire API/);
+  await assert.rejects(getPipelineCareerReadiness("token", undefined, async () => Response.json({ ...completed, class_probabilities: [] })), /invalid career-readiness response/i);
 });

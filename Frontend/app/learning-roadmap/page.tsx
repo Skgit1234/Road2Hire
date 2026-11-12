@@ -35,7 +35,9 @@ const statusStyle: Record<LearningTaskStatus, string> = {
 
 function isValidationError(message: string) {
   return message.startsWith("The API returned an invalid ") ||
+    message.startsWith("Provide both a task status and progress") ||
     message.startsWith("Task progress must be") ||
+    message.startsWith("Task status and progress are inconsistent") ||
     message.startsWith("Invalid learning task status");
 }
 

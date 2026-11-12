@@ -110,10 +110,13 @@ async function installAuthMocks(page: Page) {
     skill_gap_count: 1,
     average_match_score: 75,
     latest_resume: { id: 31, original_name: resume.original_name, uploaded_at: resume.uploaded_at },
-    latest_skill_gap: { id: 18, resume_id: 31, target_role: "Software Developer", match_score: 75, created_at: readiness.completed_at },
+    latest_skill_gap: { id: 18, resume_id: 31, target_role: "Software Developer", match_score: null, created_at: readiness.completed_at },
   }));
   await page.route(/\/activity(?:\?.*)?$/, (route) => jsonResponse(route, 200, {
-    items: [{ type: "resume_uploaded", id: 31, timestamp: resume.uploaded_at, resume_name: resume.original_name }],
+    items: [
+      { type: "resume_uploaded", id: 31, timestamp: resume.uploaded_at, resume_name: resume.original_name },
+      { type: "skill_gap_analyzed", id: 18, timestamp: readiness.completed_at, resume_id: 31, target_role: "Software Developer", match_score: null },
+    ],
     limit: 20,
   }));
 }
@@ -126,6 +129,7 @@ async function signIn(page: Page) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.locator("main").getByRole("button", { name: "Sign out" })).toBeVisible();
   await expect(page.getByText("Avery Candidate", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Account avatar: Avery Candidate" })).toHaveText("AC");
 }
 
 async function navigateFromSidebar(page: Page, name: string) {
@@ -179,6 +183,79 @@ test("authentication session is restored after a page reload", async ({ page }) 
   await expect(page.getByText("Avery Candidate", { exact: true })).toBeVisible();
 });
 
+test("transient session restoration failure keeps the token and allows retry", async ({ page }) => {
+  await signIn(page);
+
+  let profileChecks = 0;
+  await page.unroute(/\/profile\/?$/);
+  await page.route(/\/profile\/?$/, async (route) => {
+    profileChecks += 1;
+    // Next dev's React Strict Mode can start restoration twice on a full reload.
+    if (profileChecks <= 2) {
+      return jsonResponse(route, 503, { detail: "Temporarily unavailable" });
+    }
+    return jsonResponse(route, 200, {
+      id: 7,
+      name: "Avery Candidate",
+      email: "avery@example.test",
+    });
+  });
+
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Session could not be restored" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry session check" })).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => window.sessionStorage.getItem("road2hire_access_token"))
+  ).toBe("e2e-access-token");
+
+  await page.getByRole("button", { name: "Retry session check" }).click();
+  await expect(page.locator("main").getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByText("Avery Candidate", { exact: true })).toBeVisible();
+  expect(profileChecks).toBeGreaterThanOrEqual(3);
+});
+
+test("rejected session token is removed and returns to sign-in", async ({ page }) => {
+  await signIn(page);
+  await page.unroute(/\/profile\/?$/);
+  await page.route(/\/profile\/?$/, (route) =>
+    jsonResponse(route, 401, { detail: "Invalid or expired token" }));
+
+  await page.reload();
+
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => window.sessionStorage.getItem("road2hire_access_token"))
+  ).toBeNull();
+});
+
+test("forbidden session token is removed and returns to sign-in", async ({ page }) => {
+  await signIn(page);
+  await page.unroute(/\/profile\/?$/);
+  await page.route(/\/profile\/?$/, (route) =>
+    jsonResponse(route, 403, { detail: "Session is not permitted" }));
+
+  await page.reload();
+
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => window.sessionStorage.getItem("road2hire_access_token"))
+  ).toBeNull();
+});
+
+test("network failure during session restoration preserves the saved token", async ({ page }) => {
+  await signIn(page);
+  await page.unroute(/\/profile\/?$/);
+  await page.route(/\/profile\/?$/, (route) => route.abort("failed"));
+
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Session could not be restored" })).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => window.sessionStorage.getItem("road2hire_access_token"))
+  ).toBe("e2e-access-token");
+});
+
 test("login form stays hidden until session restoration finishes", async ({ page }) => {
   await signIn(page);
 
@@ -208,16 +285,20 @@ test("login form stays hidden until session restoration finishes", async ({ page
 test("dashboard loads authenticated summary and recent activity from mocked APIs", async ({ page }) => {
   await signIn(page);
   await navigateFromSidebar(page, "Dashboard");
+  await expect(page.getByRole("img", { name: "Dashboard avatar: Avery Candidate" })).toHaveText("AC");
 
   const summary = page.getByLabel("Backend dashboard summary");
   await expect(summary.getByText("Saved resumes")).toBeVisible();
   await expect(summary.getByText("2", { exact: true })).toBeVisible();
   await expect(summary.getByText("Average skill match")).toBeVisible();
+  await expect(summary.getByText("Match score unavailable")).toBeVisible();
   await expect(page.getByText(`Resume uploaded: ${resume.original_name}`)).toBeVisible();
+  await expect(page.getByText("Skill gap analyzed for Software Developer (match score unavailable)")).toBeVisible();
 });
 
 test("resume flow validates PDFs, uploads through mocked API, refreshes the list, and displays analysis", async ({ page }) => {
   let savedResumes: typeof resume[] = [];
+  let savedCandidateProfile: Record<string, unknown> | null = null;
   let uploadRequest: { authorization?: string; contentType?: string; body?: string } = {};
   let resumeListRequests = 0;
   const uploadStarted = deferred();
@@ -239,11 +320,28 @@ test("resume flow validates PDFs, uploads through mocked API, refreshes the list
     savedResumes = [resume];
     await jsonResponse(route, 200, { message: "Resume uploaded.", resume });
   });
-  await page.route(`**/resume/${resume.id}/analysis`, (route) => jsonResponse(route, 200, analysis));
+  await page.route(`**/resume/${resume.id}/analysis`, async (route) => {
+    savedCandidateProfile = {
+      id: 4,
+      user_id: 7,
+      resume_id: resume.id,
+      skills: [{ skill: "Python", source_sections: ["skills"], occurrences: [{ section: "skills", text: "Python", start: 0, end: 6 }] }],
+      education: ["BSc Computer Science"],
+      experience: ["Software Developer at Example Co."],
+      projects: ["Road2Hire integration"],
+      certifications: ["Cloud Fundamentals"],
+      updated_at: "2026-11-12T10:00:00Z",
+    };
+    await jsonResponse(route, 200, analysis);
+  });
+  await page.route("**/profile/candidate", (route) => savedCandidateProfile
+    ? jsonResponse(route, 200, savedCandidateProfile)
+    : jsonResponse(route, 404, { detail: "Candidate profile not found" }));
 
   await signIn(page);
   await navigateFromSidebar(page, "Resume");
   await expect(page.getByText("No resumes have been uploaded yet.")).toBeVisible();
+  await expect(page.getByText("No candidate profile is available yet. Analyze a saved resume to populate it.")).toBeVisible();
 
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles({
@@ -271,6 +369,24 @@ test("resume flow validates PDFs, uploads through mocked API, refreshes the list
   await page.getByRole("button", { name: "Analyze", exact: true }).click();
   await expect(page.getByText(`Analysis completed for ${resume.original_name}`)).toBeVisible();
   await expect(page.getByText("Built a small test application.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Extracted skills" }).getByText("Python", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "education" }).getByText("BSc Computer Science")).toBeVisible();
+});
+
+test("in-memory resume metadata is cleared when the authenticated user signs out", async ({ page }) => {
+  await signIn(page);
+  await navigateFromSidebar(page, "Resume");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "private-resume.pdf",
+    mimeType: "application/pdf",
+    buffer: minimalPdfFixture(),
+  });
+  await expect(page.getByText("private-resume.pdf", { exact: true })).toBeVisible();
+  await navigateFromSidebar(page, "Dashboard");
+  await page.locator("aside").getByRole("button", { name: "Sign out" }).click();
+  await page.goto("/resume");
+  await expect(page.getByText("Sign in before uploading or viewing saved resumes.")).toBeVisible();
+  await expect(page.getByText("private-resume.pdf", { exact: true })).toHaveCount(0);
 });
 
 test("resume analysis displays a mocked backend error without crashing the page", async ({ page }) => {
@@ -569,6 +685,11 @@ test("Learning Roadmap validates progress values before submitting", async ({ pa
   await page.getByLabel("Progress for SQL").fill("101");
   await page.getByRole("button", { name: "Save progress" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Enter a whole-number progress value from 0 to 100" })).toBeVisible();
+
+  await page.getByLabel("Status for SQL").selectOption("completed");
+  await page.getByLabel("Progress for SQL").fill("55");
+  await page.getByRole("button", { name: "Save progress" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Completed tasks must be 100%" })).toBeVisible();
 });
 
 test("Learning Roadmap displays a backend error", async ({ page }) => {
