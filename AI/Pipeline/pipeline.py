@@ -629,3 +629,4 @@ def process_resume(
         top_n_occupations=top_n_occupations,
         auto_select_top_occupation=auto_select_top_occupation,
     )
+

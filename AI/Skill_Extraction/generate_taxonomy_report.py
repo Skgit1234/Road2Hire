@@ -1,4 +1,4 @@
-﻿"""Generate a comprehensive ESCO Taxonomy loading and data integrity report.
+"""Generate a comprehensive ESCO Taxonomy loading and data integrity report.
 
 Outputs:
 - AI/Skill_Extraction/esco_loading_report.json

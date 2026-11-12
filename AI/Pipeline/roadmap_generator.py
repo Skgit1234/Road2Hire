@@ -332,3 +332,4 @@ class RoadmapGenerator:
             completion_criteria=criteria,
             resource_categories=resource_categories,
         )
+

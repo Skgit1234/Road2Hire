@@ -1,4 +1,3 @@
-
 """Map normalized Road2Hire skills to curated ESCO concepts."""
 
 import csv
@@ -87,9 +86,9 @@ def map_skills_to_esco(
 
 
 def map_skills_to_complete_esco(
-    extracted_skills: list[dict],
-    taxonomy=None,
-) -> list[dict]:
+    extracted_skills: list[dict[str, Any]],
+    taxonomy: Any = None,
+) -> list[dict[str, Any]]:
     """Enrich extracted skills using the complete ESCO taxonomy."""
     from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
 

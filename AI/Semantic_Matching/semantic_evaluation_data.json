@@ -1,0 +1,253 @@
+{
+  "description": "Synthetic evaluation benchmark suite for Sentence Transformer semantic skill matching in Road2Hire (Issue #17). Includes positive matches, genuine non-matches, related-but-not-equivalent pairs, uncatalogued skills, deceptive lexical pairs, empty/duplicate inputs, and ranked NDCG test cases. Synthetic benchmark for model calibration; not representative of real-world resume/job distribution.",
+  "is_synthetic": true,
+  "samples": [
+    {
+      "id": "SEM001",
+      "category": "baseline_parity",
+      "description": "Partial match with recognized taxonomy skills",
+      "candidate_skills": ["Python", "Pandas", "NumPy"],
+      "required_skills": ["Python", "Pandas", "Scikit-learn", "Machine Learning"],
+      "expected": {
+        "present_skills": ["Python", "Pandas"],
+        "missing_skills": ["Scikit-learn", "Machine Learning"],
+        "match_score": 0.50,
+        "tp": 2,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.50,
+        "f1": 0.6667
+      }
+    },
+    {
+      "id": "SEM002",
+      "category": "unfamiliar_skills",
+      "description": "Uncatalogued modern systems languages: Rust vs Go (distinct technologies, genuine non-match)",
+      "candidate_skills": ["Rust"],
+      "required_skills": ["Go"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["Go"],
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM003",
+      "category": "alias_resolution",
+      "description": "Uncatalogued language alias resolution: Golang matches Go",
+      "candidate_skills": ["Golang"],
+      "required_skills": ["Go"],
+      "expected": {
+        "present_skills": ["Go"],
+        "missing_skills": [],
+        "match_score": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "SEM004",
+      "category": "alias_resolution",
+      "description": "Uncatalogued database alias resolution: Postgres matches PostgreSQL",
+      "candidate_skills": ["Postgres"],
+      "required_skills": ["PostgreSQL"],
+      "expected": {
+        "present_skills": ["PostgreSQL"],
+        "missing_skills": [],
+        "match_score": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "SEM005",
+      "category": "deceptive_pairs",
+      "description": "Deceptive lexical pair: Java vs JavaScript (strict rejection, genuine non-match)",
+      "candidate_skills": ["Java"],
+      "required_skills": ["JavaScript"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["JavaScript"],
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM006",
+      "category": "deceptive_pairs",
+      "description": "Deceptive language family pair: C vs C++ (strict rejection, distinct competencies)",
+      "candidate_skills": ["C"],
+      "required_skills": ["C++"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["C++"],
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM007",
+      "category": "related_not_equivalent",
+      "description": "Related container ecosystem: Docker vs Kubernetes (related tool, not equivalent)",
+      "candidate_skills": ["Docker"],
+      "required_skills": ["Kubernetes"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["Kubernetes"],
+        "related_skills_count": 1,
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM008",
+      "category": "related_not_equivalent",
+      "description": "Related framework to protocol: FastAPI vs REST APIs (related, not equivalent)",
+      "candidate_skills": ["FastAPI"],
+      "required_skills": ["REST APIs"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["REST APIs"],
+        "related_skills_count": 1,
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM009",
+      "category": "bipartite_assignment",
+      "description": "Bipartite one-to-one optimal assignment with multiple uncatalogued skills (Rust and Go)",
+      "candidate_skills": ["Rust", "Go"],
+      "required_skills": ["Go", "Rust"],
+      "expected": {
+        "present_skills": ["Go", "Rust"],
+        "missing_skills": [],
+        "match_score": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    {
+      "id": "SEM010",
+      "category": "non_match",
+      "description": "Completely unrelated skills with zero overlap",
+      "candidate_skills": ["SQL", "Git"],
+      "required_skills": ["Python", "Machine Learning"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["Python", "Machine Learning"],
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM011",
+      "category": "empty_edge_cases",
+      "description": "Empty candidate skills list edge case",
+      "candidate_skills": [],
+      "required_skills": ["Python", "Pandas"],
+      "expected": {
+        "present_skills": [],
+        "missing_skills": ["Python", "Pandas"],
+        "match_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      }
+    },
+    {
+      "id": "SEM012",
+      "category": "empty_edge_cases",
+      "description": "Duplicate and case variation inputs",
+      "candidate_skills": ["Python", "python", " PYTHON ", "Pandas"],
+      "required_skills": ["Python", "NumPy"],
+      "expected": {
+        "present_skills": ["Python"],
+        "missing_skills": ["NumPy"],
+        "match_score": 0.50,
+        "tp": 1,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.50,
+        "f1": 0.6667
+      }
+    },
+    {
+      "id": "SEM013",
+      "category": "ranked_retrieval",
+      "description": "Ranked retrieval evaluation with explicit graded relevance judgments for NDCG",
+      "candidate_skills": ["Golang", "Docker", "Python"],
+      "required_skills": ["Go"],
+      "ranked_query": {
+        "query_required_skill": "Go",
+        "candidate_pool": ["Golang", "Docker", "Python"],
+        "ground_truth_relevance": {
+          "golang": 2,
+          "docker": 0,
+          "python": 0
+        },
+        "k": 3
+      },
+      "expected": {
+        "present_skills": ["Go"],
+        "missing_skills": [],
+        "match_score": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "expected_ndcg_at_3": 1.0
+      }
+    }
+  ]
+}

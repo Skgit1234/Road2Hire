@@ -1,4 +1,4 @@
-﻿"""Complete ESCO Skill Taxonomy loader, indexer, and query interface.
+"""Complete ESCO Skill Taxonomy loader, indexer, and query interface.
 
 Loads the full official ESCO taxonomy from raw CSV files, providing:
 - Fast indexed lookups by URI, preferred label, and alternative labels.

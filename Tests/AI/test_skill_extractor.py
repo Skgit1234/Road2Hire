@@ -26,6 +26,11 @@ def test_load_skill_vocabulary():
     assert "Pandas" in vocabulary
     assert "Scikit-learn" in vocabulary
 
+    assert "SQL" in vocabulary
+    assert "Git" in vocabulary
+    assert "REST APIs" in vocabulary
+    assert "Data Analysis" in vocabulary
+
 
 def test_normalize_skill_aliases():
     assert normalize_skill_name("python") == "Python"
@@ -191,3 +196,109 @@ def test_generate_skill_embeddings_empty_input():
 
     assert result["skills"] == []
     assert result["embedding_dimension"] == 384
+
+
+def test_extract_additional_skills():
+    resume_data = {
+        "source_file": "test_resume.pdf",
+        "sections": {
+            "skills": "SQL, Git, REST APIs, Data Analysis"
+        },
+    }
+
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {
+        "SQL",
+        "Git",
+        "REST APIs",
+        "Data Analysis",
+    }
+    assert result["skill_count"] == 4
+
+
+def test_extract_all_skills_from_sample_resume():
+    from AI.Resume_Processing.resume_pipeline import process_resume
+
+    resume_data = process_resume("Tests/AI/sample_resume.pdf")
+    result = extract_skills(resume_data)
+    extracted_names = {item["skill"] for item in result["skills"]}
+
+    assert extracted_names == {
+        "Python",
+        "SQL",
+        "Git",
+        "REST APIs",
+        "Data Analysis",
+    }
+    assert result["skill_count"] == 5
+
+
+def test_skill_matcher_word_boundaries_false_positive_prevention():
+    """Verify that substring matches inside unrelated words are strictly prevented."""
+    from AI.Skill_Extraction.skill_extractor import SkillMatcher
+
+    vocab = ["C", "Java", "Rust", "Go", "R"]
+    matcher = SkillMatcher(vocab)
+
+    # Text containing words that embed those short skill names
+    text = "We trust our Category of Good JavaScript developers to read literature."
+    matches = matcher.find_in_text(text)
+
+    # None of the skills should match inside 'trust', 'Category', 'Good', 'JavaScript'
+    assert "C" not in matches
+    assert "Java" not in matches
+    assert "Rust" not in matches
+    assert "Go" not in matches
+
+    # Now test valid boundaries
+    valid_text = "Proficient in C, Java, and Rust; some Go experience."
+    valid_matches = matcher.find_in_text(valid_text)
+    assert "C" in valid_matches
+    assert "Java" in valid_matches
+    assert "Rust" in valid_matches
+    assert "Go" in valid_matches
+
+
+def test_skill_matcher_synonym_resolution():
+    """Verify that configured synonyms resolve to canonical skill names."""
+    from AI.Skill_Extraction.skill_extractor import extract_skills
+
+    resume_data = {
+        "sections": {
+            "skills": "Experienced in ML, sklearn, and numpy for predictive modeling."
+        }
+    }
+    result = extract_skills(resume_data, vocabulary=["Machine Learning", "Scikit-learn", "NumPy"])
+    skills_found = {s["skill"] for s in result["skills"]}
+    assert skills_found == {"Machine Learning", "Scikit-learn", "NumPy"}
+
+
+def test_large_vocabulary_performance_benchmark():
+    """Verify that full ESCO vocabulary matching (~100k items) runs in < 0.05 seconds with cached trie."""
+    import time
+    from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
+    from AI.Skill_Extraction.skill_extractor import extract_skills, load_esco_skill_vocabulary
+
+    tax = get_esco_taxonomy()
+    esco_vocab = load_esco_skill_vocabulary(taxonomy=tax, include_alt_labels=True)
+    assert len(esco_vocab) > 50000
+
+    sample_resume_data = {
+        "sections": {
+            "skills": "Python, SQL, Git, Linux, Docker, PostgreSQL, Data Analysis",
+            "experience": "Senior software engineer building backend services using Python and SQL databases.",
+        }
+    }
+
+    # Warm-up call builds and caches the trie
+    extract_skills(sample_resume_data, vocabulary=esco_vocab)
+
+    # Benchmark cached search execution
+    t0 = time.perf_counter()
+    result = extract_skills(sample_resume_data, vocabulary=esco_vocab)
+    elapsed = time.perf_counter() - t0
+
+    assert elapsed < 0.05, f"Cached skill extraction took {elapsed:.4f}s, expected < 0.05s"
+    assert result["skill_count"] > 0
