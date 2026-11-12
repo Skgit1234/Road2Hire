@@ -2,17 +2,51 @@
 """Generate semantic embeddings for normalized Road2Hire skills."""
 
 from functools import lru_cache
+import os
 from typing import Any
+import warnings
 
-from sentence_transformers import SentenceTransformer
+# Suppress progress bars and third-party notices by default unless verbose is explicitly enabled
+os.environ.setdefault("TQDM_DISABLE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*unauthenticated requests to the HF Hub.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module=r"huggingface_hub.*",
+)
+
+try:
+    import huggingface_hub.utils.logging as hf_logging
+    if os.environ.get("ROAD2HIRE_VERBOSE") != "1":
+        hf_logging.set_verbosity_error()
+except ImportError:
+    pass
+
+try:
+    import transformers.utils.logging as t_logging
+    if os.environ.get("ROAD2HIRE_VERBOSE") != "1":
+        t_logging.set_verbosity_error()
+except ImportError:
+    pass
 
 
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=2)
-def _load_model(model_name: str = DEFAULT_MODEL_NAME) -> SentenceTransformer:
+def _load_model(model_name: str = DEFAULT_MODEL_NAME) -> Any:
     """Load and cache the pretrained sentence embedding model."""
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as exc:
+        raise ImportError("Sentence Transformers is required for non-empty skill embeddings. Install it using: python -m pip install -r Backend/Requirements-ai-test.txt") from exc
+
     return SentenceTransformer(model_name)
 
 

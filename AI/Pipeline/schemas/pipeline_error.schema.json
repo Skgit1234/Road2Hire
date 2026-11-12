@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://road2hire.ai/schemas/pipeline_error.v1.json",
+  "title": "Road2HirePipelineError",
+  "description": "Standardized canonical JSON error contract for Road2Hire AI/ML pipeline failures.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "timestamp",
+    "error",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["error"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message", "stage", "recoverable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "RESUME_NOT_FOUND",
+            "INVALID_FILE_TYPE",
+            "EMPTY_OR_CORRUPT_DOCUMENT",
+            "TEXT_EXTRACTION_FAILED",
+            "NO_SKILLS_DETECTED",
+            "OCCUPATION_NOT_FOUND",
+            "OCCUPATION_SELECTION_REQUIRED",
+            "MODEL_ARTIFACT_MISSING",
+            "READINESS_INFERENCE_FAILED",
+            "SHAP_EXPLANATION_FAILED",
+            "PIPELINE_EXECUTION_ERROR"
+          ],
+          "description": "Standardized machine-readable error classification code."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable summary of the failure."
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "input_validation",
+            "resume_extraction",
+            "skill_extraction",
+            "occupation_resolution",
+            "skill_gap",
+            "readiness_prediction",
+            "shap_explanation",
+            "roadmap_generation",
+            "reporting"
+          ],
+          "description": "Pipeline stage during which the failure occurred."
+        },
+        "details": {
+          "type": "object",
+          "description": "Optional contextual diagnostics, such as suggested occupations or file paths.",
+          "additionalProperties": true
+        },
+        "recoverable": {
+          "type": "boolean",
+          "description": "True if caller can recover by supplying valid input arguments (e.g. picking a suggested occupation)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Prior warnings collected before the fatal error occurred."
+    }
+  },
+  "additionalProperties": false
+}

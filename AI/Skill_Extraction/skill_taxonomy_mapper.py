@@ -1,4 +1,3 @@
-
 """Map normalized Road2Hire skills to curated ESCO concepts."""
 
 import csv
@@ -82,5 +81,57 @@ def map_skills_to_esco(
                 mapping["Mapping_Type"] if mapping else "unmapped"
             ),
         })
+
+    return results
+
+
+def map_skills_to_complete_esco(
+    extracted_skills: list[dict[str, Any]],
+    taxonomy: Any = None,
+) -> list[dict[str, Any]]:
+    """Enrich extracted skills using the complete ESCO taxonomy."""
+    from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
+
+    tax = taxonomy if taxonomy is not None else get_esco_taxonomy()
+    results = []
+
+    for item in extracted_skills:
+        if not isinstance(item, dict):
+            continue
+
+        skill_name = item.get("skill")
+        if not isinstance(skill_name, str) or not skill_name.strip():
+            continue
+
+        skill_name = skill_name.strip()
+        skill_obj = tax.find_skill(skill_name)
+
+        if skill_obj:
+            preferred_match = tax.get_skill_by_preferred_label(skill_name)
+            is_preferred = (
+                preferred_match is not None
+                and preferred_match.concept_uri == skill_obj.concept_uri
+            )
+
+            results.append({
+                **item,
+                "ESCO_Skill_Id": skill_obj.concept_uri,
+                "ESCO_Skill_Name": skill_obj.preferred_label,
+                "ESCO_Skill_Type": skill_obj.skill_type,
+                "ESCO_Reuse_Level": skill_obj.reuse_level,
+                "ESCO_Mapping_Type": (
+                    "exact_preferred" if is_preferred
+                    else "alternative_label"
+                ),
+            })
+        else:
+            results.append({
+                **item,
+                "ESCO_Skill_Id": "",
+                "ESCO_Skill_Name": "",
+                "ESCO_Skill_Type": "",
+                "ESCO_Reuse_Level": "",
+                "ESCO_Mapping_Type": "unmapped",
+            })
 
     return results

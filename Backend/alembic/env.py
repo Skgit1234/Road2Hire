@@ -5,12 +5,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from Core.database import Base
-from Models import User
+from Core.database import Base, DATABASE_URL
+from Models import CandidateProfile, Job, LearningTask, PipelineRun, Resume, SkillGap, User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Keep Alembic on the same environment-provided database as the application.
+# ConfigParser treats percent signs as interpolation markers, so escape them
+# before storing a URL that may contain encoded credentials.
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

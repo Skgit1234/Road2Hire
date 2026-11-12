@@ -2,8 +2,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useCandidateProfile } from "@/components/profile/CandidateProfileProvider";
 import { calculateRoadmapProgress, getRoadmapPhases } from "@/components/profile/candidate-profile-state";
+import { getDashboard, getRecentActivity, type ActivityItem, type DashboardResponse } from "@/lib/api-client";
 import { sampleMetrics, sampleSkills } from "./data/sample-data";
 
 const statCards = [
@@ -146,7 +149,41 @@ function DashboardCard({
 }
 
 export default function Dashboard() {
+  const { session, isRestoring } = useAuth();
   const { profile } = useCandidateProfile();
+  const [accountData, setAccountData] = useState<{
+    userId: number;
+    dashboard: DashboardResponse;
+    activity: ActivityItem[];
+  } | null>(null);
+  const [accountError, setAccountError] = useState<{ userId: number; message: string } | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    if (!session) return () => { current = false; };
+    Promise.all([
+      getDashboard(session.accessToken),
+      getRecentActivity(session.accessToken),
+    ]).then(([summary, recent]) => {
+      if (current) {
+        setAccountData({ userId: session.profile.id, dashboard: summary, activity: recent.items });
+        setAccountError(null);
+      }
+    }).catch((error: unknown) => {
+      if (current) setAccountError({
+        userId: session.profile.id,
+        message: error instanceof Error ? error.message : "Could not load dashboard data.",
+      });
+    });
+
+    return () => { current = false; };
+  }, [session]);
+
+  const dashboard = session && accountData?.userId === session.profile.id ? accountData.dashboard : null;
+  const activity = session && accountData?.userId === session.profile.id ? accountData.activity : [];
+  const dashboardError = session && accountError?.userId === session.profile.id ? accountError.message : "";
+  const dashboardLoading = Boolean(session && !dashboard && !dashboardError);
+
   const roadmapPhases = getRoadmapPhases(profile.roadmap);
   const roadmapItems = roadmapPhases.flatMap((phase) => phase.items);
   const roadmapProgress = calculateRoadmapProgress(profile.roadmap);
@@ -155,15 +192,27 @@ export default function Dashboard() {
     status: item.status,
     icon: item.status === "Completed" ? "✓" : item.status === "In progress" ? "⌁" : "◌",
   }));
+  const dashboardCards = dashboard ? [
+    { title: "Saved resumes", value: String(dashboard.resume_count), note: "Resumes on your account" },
+    { title: "Skill gap analyses", value: String(dashboard.skill_gap_count), note: "Saved analyses" },
+    { title: "Average skill match", value: dashboard.average_match_score === null ? "—" : `${dashboard.average_match_score}%`, note: "Across saved analyses" },
+    { title: "Latest target role", value: dashboard.latest_skill_gap?.target_role ?? "—", note: dashboard.latest_skill_gap ? `${dashboard.latest_skill_gap.match_score}% match` : "No skill gap analysis yet" },
+  ] : [];
+
+  function activityLabel(item: ActivityItem) {
+    if (item.type === "resume_uploaded") return `Resume uploaded: ${item.resume_name}`;
+    if (item.type === "skill_gap_analyzed") return `Skill gap analyzed for ${item.target_role} (${item.match_score}% match)`;
+    return `Learning progress updated: ${item.skill_name} (${item.progress}%)`;
+  }
 
   return (
     <div className="min-h-screen bg-background px-3 py-4 md:px-5 lg:px-6 xl:px-8">
       <div className="mx-auto max-w-[1520px]">
         <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="mb-1 text-[0.95rem] font-medium text-slate-700">Good morning, Arjun!</h1>
+            <h1 className="mb-1 text-[0.95rem] font-medium text-slate-700">{session ? `Welcome, ${session.profile.name}` : "Welcome to Road2Hire"}</h1>
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Sample dashboard data
+              Account summary from the backend
             </p>
           </div>
 
@@ -187,6 +236,41 @@ export default function Dashboard() {
             </div>
           </div>
         </header>
+
+        <section className="mb-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-4" aria-label="Backend dashboard summary">
+          {isRestoring && <p role="status" className="col-span-full rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Restoring your session…</p>}
+          {dashboardLoading && <p role="status" className="col-span-full rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Loading your account summary…</p>}
+          {dashboardError && <p role="alert" className="col-span-full rounded-xl border border-rose-200 bg-white p-5 text-sm text-rose-700">{dashboardError}</p>}
+          {!isRestoring && !session && <DashboardCard className="col-span-full p-5"><p className="text-sm text-slate-700">Sign in to load your account summary.</p><Link href="/login" className="mt-2 inline-block text-sm font-semibold text-indigo-700 underline">Sign in</Link></DashboardCard>}
+          {!dashboardLoading && !dashboardError && dashboardCards.map((card) => (
+            <DashboardCard key={card.title} className="p-4">
+              <p className="text-sm font-medium text-slate-500">{card.title}</p>
+              <p className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-900">{card.value}</p>
+              <p className="mt-2 text-sm text-slate-500">{card.note}</p>
+            </DashboardCard>
+          ))}
+        </section>
+
+        {session && !dashboardLoading && !dashboardError && (
+          <DashboardCard className="mb-5 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Recent account activity</h2>
+              <span className="text-xs text-slate-500">From your account</span>
+            </div>
+            {activity.length === 0 ? <p className="text-sm text-slate-500">No account activity yet.</p> : (
+              <ul className="space-y-2">
+                {activity.map((item) => (
+                  <li key={`${item.type}-${item.id}`} className="flex flex-wrap justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                    <span className="text-slate-700">{activityLabel(item)}</span>
+                    <time className="text-xs text-slate-500" dateTime={item.timestamp}>{new Date(item.timestamp).toLocaleString()}</time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DashboardCard>
+        )}
+
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">The following dashboard panels are sample previews. They are not generated from your account or resume.</p>
 
         <section className="mb-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
           {statCards.map((card) => (

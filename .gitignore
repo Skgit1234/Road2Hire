@@ -12,6 +12,8 @@ Python Environments
 ==========================
 
 .venv/
+Backend/.venv-contract-tests/
+Backend/.venv-contract-tests/
 venv/
 env/
 ENV/
@@ -42,6 +44,10 @@ eggs/
 .eggs/
 lib/
 lib64/
+!Frontend/lib/
+!Frontend/lib/**
+!Frontend/lib/
+!Frontend/lib/**
 parts/
 sdist/
 wheels/
@@ -218,3 +224,6 @@ Docs/*
 !Docs/Skill_Taxonomy_Strategy.md
 !Docs/ESCO_ONET_Mapping_Strategy.md
 !Docs/Annotation_Strategy.md
+
+# Runtime resume uploads
+Backend/uploads/
