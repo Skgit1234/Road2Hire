@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from Api.profile import get_current_user
@@ -18,6 +19,7 @@ from Schemas.skill_gap import (
     SkillGapHistoryResponse,
     SkillPriorityResponse,
 )
+from Services.file_service import get_resume_file_path
 from Services.pipeline_service import (
     ResumeFileValidationError,
     ResumeOwnershipError,
@@ -56,20 +58,48 @@ def get_skill_gaps(
     if not target_role:
         raise HTTPException(status_code=422, detail="Target role cannot be blank")
 
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == user.id,
+    ).first()
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    try:
+        file_path = get_resume_file_path(resume.file_path)
+    except (ValueError, OSError, RuntimeError) as exc:
+        logger.warning("Refusing to access resume %s outside the upload directory", resume_id)
+        raise HTTPException(
+            status_code=404,
+            detail="Resume file not found",
+        ) from exc
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Resume file not found")
+
+    run = (
+        db.query(PipelineRun)
+        .filter(
+            PipelineRun.user_id == user.id,
+            PipelineRun.resume_id == resume_id,
+            func.lower(PipelineRun.target_occupation_title) == target_role.casefold(),
+        )
+        .order_by(PipelineRun.created_at.desc(), PipelineRun.id.desc())
+        .first()
+    )
+    if run is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No existing analysis found for this resume and target role. Submit a new analysis.",
+        )
+
     warnings = []
     if required_skills:
         warnings.append(
             "Custom required_skills are stored with jobs but are not independently "
             "evaluated by the unified pipeline; results use ESCO occupation requirements."
         )
-    return _analyze_for_resume(
-        db=db,
-        user=user,
-        resume_id=resume_id,
-        target_occupation=target_role,
-        auto_select_top_occupation=False,
-        warnings=warnings,
-    )
+    return _analysis_response(run, warnings=warnings)
 
 
 @router.get("/history", response_model=SkillGapHistoryResponse)

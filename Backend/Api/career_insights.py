@@ -1,18 +1,16 @@
-import hashlib
 import logging
 import math
 from typing import Any, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from Api.profile import get_current_user
 from Core.database import get_db
 from Models.learning_task import LearningTask
 from Models.pipeline_run import PipelineRun
 from Models.user import User
+from Services.roadmap_utils import logical_item_key
 from Schemas.career_readiness import CareerReadinessPredictionResponse
 from Schemas.feature_explanation import FeatureExplanationResponse
 from Schemas.roadmap import (
@@ -544,7 +542,7 @@ def _learning_roadmap_response(
     if not isinstance(phases, list):
         raise HTTPException(status_code=503, detail="Saved learning roadmap is invalid")
 
-    task_rows = _ensure_roadmap_tasks(db, run.id, phases)
+    task_rows = _get_roadmap_tasks(db, run.id)
     tasks_by_key = {task.logical_item_key: task for task in task_rows}
     phase_responses = []
     for phase in phases:
@@ -583,7 +581,7 @@ def _learning_roadmap_response(
                     status_code=503,
                     detail="Saved learning roadmap item is invalid",
                 )
-            key = _logical_item_key(phase_number, skill_name, skill_uri)
+            key = logical_item_key(phase_number, skill_name, skill_uri)
             task = tasks_by_key.get(key)
             if task is None:
                 raise HTTPException(
@@ -672,94 +670,15 @@ def _learning_roadmap_response(
     )
 
 
-def _ensure_roadmap_tasks(
+def _get_roadmap_tasks(
     db: Session,
     run_id: int,
-    phases: list[Any],
 ) -> list[LearningTask]:
-    rows = []
-    for phase in phases:
-        if not isinstance(phase, dict):
-            raise HTTPException(status_code=503, detail="Saved learning roadmap is invalid")
-        phase_number = phase.get("phase_number")
-        phase_name = phase.get("phase_name")
-        items = phase.get("items")
-        if (
-            isinstance(phase_number, bool)
-            or not isinstance(phase_number, int)
-            or not 1 <= phase_number <= 4
-            or not isinstance(items, list)
-        ):
-            raise HTTPException(status_code=503, detail="Saved learning roadmap is invalid")
-        for item in items:
-            if not isinstance(item, dict):
-                raise HTTPException(status_code=503, detail="Saved roadmap item is invalid")
-            skill_name = item.get("skill_name") or item.get("skill_label")
-            skill_uri = item.get("esco_uri") or item.get("skill_uri") or item.get(
-                "canonical_uri"
-            )
-            if not isinstance(skill_name, str) or not skill_name.strip():
-                raise HTTPException(status_code=503, detail="Saved roadmap item is invalid")
-            if skill_uri is not None and not isinstance(skill_uri, str):
-                raise HTTPException(status_code=503, detail="Saved roadmap item is invalid")
-            priority = item.get("priority")
-            if (
-                len(skill_name.strip()) > 255
-                or skill_uri is not None and len(skill_uri) > 512
-                or isinstance(priority, str) and len(priority) > 20
-                or isinstance(phase.get("phase_name"), str)
-                and len(phase["phase_name"]) > 120
-            ):
-                raise HTTPException(status_code=503, detail="Saved roadmap item is invalid")
-            rows.append(
-                {
-                    "pipeline_run_id": run_id,
-                    "logical_item_key": _logical_item_key(
-                        phase_number, skill_name, skill_uri
-                    ),
-                    "roadmap_phase_number": phase_number,
-                    "roadmap_phase_name": phase_name if isinstance(phase_name, str) else None,
-                    "skill_name": skill_name.strip(),
-                    "skill_uri": skill_uri,
-                    "priority": priority if isinstance(priority, str) else None,
-                    "roadmap_item_data": item,
-                }
-            )
-    if rows:
-        try:
-            statement = pg_insert(LearningTask).values(rows)
-            db.execute(
-                statement.on_conflict_do_nothing(
-                    constraint="uq_learning_task_pipeline_run_logical_item"
-                )
-            )
-            db.commit()
-        except SQLAlchemyError as exc:
-            db.rollback()
-            logger.exception("Could not persist roadmap tasks for run %s", run_id)
-            raise HTTPException(
-                status_code=500,
-                detail="Could not prepare roadmap progress",
-            ) from exc
     return (
         db.query(LearningTask)
         .filter(LearningTask.pipeline_run_id == run_id)
         .all()
     )
-
-
-def _logical_item_key(
-    phase_number: int,
-    skill_name: str,
-    skill_uri: str | None,
-) -> str:
-    identity = (
-        f"uri:{skill_uri.strip().casefold()}"
-        if skill_uri and skill_uri.strip()
-        else f"name:{skill_name.strip().casefold()}"
-    )
-    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-    return f"phase:{phase_number}:skill:{digest}"
 
 
 def _roadmap_resource_response(

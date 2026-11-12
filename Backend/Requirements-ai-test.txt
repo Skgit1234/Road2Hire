@@ -1,0 +1,5 @@
+# Optional AI test dependencies.
+# Includes backend development and AI runtime dependencies.
+-r Requirements-dev.txt
+-r Requirements-ai.txt
+sentence-transformers==5.1.2

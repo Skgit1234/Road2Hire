@@ -108,6 +108,7 @@ def test_resume_upload_persists_metadata(
         ),
         ("resume.pdf", "application/pdf", b"%PDF-1.7", 999, 403),
     ],
+    ids=("extension", "content-type", "signature", "size", "foreign-user"),
 )
 def test_resume_upload_validation_rejects_invalid_requests(
     api_client,
@@ -230,6 +231,8 @@ def test_candidate_profile_analysis_refreshes_latest_resume(
 ):
     resume_path = tmp_path / "resume.pdf"
     resume_path.write_bytes(b"%PDF-test")
+    # This test covers profile refresh; path-boundary behavior is tested separately.
+    monkeypatch.setattr(resume_api, "get_resume_file_path", Path)
     resume = Resume(
         id=11,
         user_id=test_user.id,

@@ -131,10 +131,10 @@ Representative response:
 
 - **Authentication:** Required.
 - **Content type:** `multipart/form-data`.
-- **Fields:** `user_id` (required form integer) and `file` (required upload). `user_id` must equal the authenticated user's ID.
-- **Success:** `200`, `ResumeUploadResponse` containing `message` and a `resume` object (`id`, `user_id`, `original_name`, `stored_name`, `file_path`, `uploaded_at`).
+- **Fields:** `file` (required upload) and optional `user_id` (form integer). If supplied, `user_id` must equal the authenticated user's ID.
+- **Success:** `200`, `ResumeUploadResponse` containing `message` and a `resume` object (`id`, `user_id`, `original_name`, `stored_name`, `uploaded_at`). Server filesystem paths are not exposed.
 - **Errors:** `400` for non-PDF extension, non-`application/pdf` content type, filename longer than 255 characters, or invalid `%PDF-` signature; `403` if `user_id` is not the authenticated user; `413` if larger than 5 MiB; `500` for storage/database failures; `422` for missing/invalid multipart fields; authentication errors.
-- **Important:** Maximum accepted size is 5 MiB (5 * 1024 * 1024 bytes). Use `FormData`; do not manually set the multipart `Content-Type` boundary. The response schema includes `file_path`, which is backend storage metadata; do not display or depend on it in the UI.
+- **Important:** Maximum accepted size is 5 MiB (5 * 1024 * 1024 bytes). Use `FormData`; do not manually set the multipart `Content-Type` boundary. The response omits server filesystem paths.
 
 Example:
 

@@ -19,10 +19,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Remove old dependent tables.
-    # Existing test data in these two tables is disposable.
-    op.drop_table("learning_tasks")
-    op.drop_table("skill_gaps")
+    # 1. Preserve the existing tables and their records.
+    # PostgreSQL updates the existing foreign-key reference when a table is renamed.
+    op.rename_table("skill_gaps", "legacy_skill_gaps")
+    op.rename_table("learning_tasks", "legacy_learning_tasks")
+
+    # Free primary-key index and sequence names for the redesigned tables.
+    op.execute("ALTER INDEX skill_gaps_pkey RENAME TO legacy_skill_gaps_pkey")
+    op.execute("ALTER INDEX learning_tasks_pkey RENAME TO legacy_learning_tasks_pkey")
+    op.execute("ALTER SEQUENCE skill_gaps_id_seq RENAME TO legacy_skill_gaps_id_seq")
+    op.execute("ALTER SEQUENCE learning_tasks_id_seq RENAME TO legacy_learning_tasks_id_seq")
 
     # 2. Remove redundant resume indexes.
     op.drop_index("ix_resumes_id", table_name="resumes")
@@ -194,12 +200,6 @@ def upgrade() -> None:
         table_name="candidate_profiles",
     )
 
-    # Preserve one candidate profile per user.
-    op.create_unique_constraint(
-        "uq_candidate_profiles_user_id",
-        "candidate_profiles",
-        ["user_id"],
-    )
 
     # Retain resume lookup index.
     op.create_index(
@@ -407,16 +407,11 @@ def downgrade() -> None:
         "ix_candidate_profiles_resume_id",
         table_name="candidate_profiles",
     )
-    op.drop_constraint(
-        "uq_candidate_profiles_user_id",
-        "candidate_profiles",
-        type_="unique",
-    )
     op.create_index(
         "ix_candidate_profiles_user_id",
         "candidate_profiles",
         ["user_id"],
-        unique=True,
+        unique=False,
     )
     op.create_index(
         "ix_candidate_profiles_id",
@@ -460,136 +455,12 @@ def downgrade() -> None:
         unique=False,
     )
 
-    # 5. Restore the previous skill_gaps table.
-    op.create_table(
-        "skill_gaps",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("resume_id", sa.Integer(), nullable=False),
-        sa.Column("target_role", sa.String(150), nullable=False),
-        sa.Column("requirements_hash", sa.String(64), nullable=False),
-        sa.Column(
-            "required_skills",
-            postgresql.JSON(),
-            nullable=False,
-        ),
-        sa.Column(
-            "matched_skills",
-            postgresql.JSON(),
-            nullable=False,
-        ),
-        sa.Column(
-            "missing_skills",
-            postgresql.JSON(),
-            nullable=False,
-        ),
-        sa.Column("match_score", sa.Float(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(
-            ["resume_id"],
-            ["resumes.id"],
-            name="skill_gaps_resume_id_fkey",
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["users.id"],
-            name="skill_gaps_user_id_fkey",
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "resume_id",
-            "target_role",
-            "requirements_hash",
-            name="uq_skill_gap_analysis",
-        ),
-    )
+    # 5. Restore the preserved legacy tables and their original names.
+    op.rename_table("legacy_skill_gaps", "skill_gaps")
+    op.rename_table("legacy_learning_tasks", "learning_tasks")
 
-    op.create_index(
-        "ix_skill_gaps_user_id",
-        "skill_gaps",
-        ["user_id"],
-    )
-    op.create_index(
-        "ix_skill_gaps_resume_id",
-        "skill_gaps",
-        ["resume_id"],
-    )
-    op.create_index(
-        "ix_skill_gaps_id",
-        "skill_gaps",
-        ["id"],
-    )
-
-    # 6. Restore the previous learning_tasks table.
-    op.create_table(
-        "learning_tasks",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("skill_gap_id", sa.Integer(), nullable=False),
-        sa.Column("skill_name", sa.String(255), nullable=False),
-        sa.Column(
-            "status",
-            sa.String(20),
-            server_default="not_started",
-            nullable=False,
-        ),
-        sa.Column(
-            "progress",
-            sa.Integer(),
-            server_default="0",
-            nullable=False,
-        ),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(
-            ["skill_gap_id"],
-            ["skill_gaps.id"],
-            name="learning_tasks_skill_gap_id_fkey",
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["users.id"],
-            name="learning_tasks_user_id_fkey",
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "skill_gap_id",
-            "skill_name",
-            name="uq_learning_task_skill",
-        ),
-    )
-
-    op.create_index(
-        "ix_learning_tasks_user_id",
-        "learning_tasks",
-        ["user_id"],
-    )
-    op.create_index(
-        "ix_learning_tasks_skill_gap_id",
-        "learning_tasks",
-        ["skill_gap_id"],
-    )
-    op.create_index(
-        "ix_learning_tasks_id",
-        "learning_tasks",
-        ["id"],
-    )
+    # Restore original primary-key index and sequence names.
+    op.execute("ALTER INDEX legacy_skill_gaps_pkey RENAME TO skill_gaps_pkey")
+    op.execute("ALTER INDEX legacy_learning_tasks_pkey RENAME TO learning_tasks_pkey")
+    op.execute("ALTER SEQUENCE legacy_skill_gaps_id_seq RENAME TO skill_gaps_id_seq")
+    op.execute("ALTER SEQUENCE legacy_learning_tasks_id_seq RENAME TO learning_tasks_id_seq")

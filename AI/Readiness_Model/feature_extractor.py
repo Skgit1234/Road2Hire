@@ -173,4 +173,3 @@ class ReadinessFeatureExtractor(BaseEstimator, TransformerMixin):
     def get_feature_names_out(self, input_features: Any = None) -> list[str]:
         """Return feature names for scikit-learn compliance."""
         return list(self.feature_names_)
-

@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -8,7 +8,6 @@ class ResumeResponse(BaseModel):
     user_id: int
     original_name: str
     stored_name: str
-    file_path: str
     uploaded_at: datetime
 
     class Config:

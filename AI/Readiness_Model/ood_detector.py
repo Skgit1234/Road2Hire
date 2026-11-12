@@ -286,4 +286,3 @@ class ReadinessOODDetector:
 def get_default_ood_detector() -> ReadinessOODDetector:
     """Return a singleton or default OOD detector populated with training statistics."""
     return ReadinessOODDetector()
-

@@ -29,10 +29,11 @@ import { MAX_RESUME_BYTES, validateResumeFile } from "../components/profile/resu
 
 test("resume upload validation accepts supported files and rejects invalid type, empty, and oversized files", () => {
   assert.equal(validateResumeFile({ name: "candidate.PDF", size: 2048 }), null);
-  assert.equal(validateResumeFile({ name: "candidate.docx", size: 2048 }), null);
+  assert.match(validateResumeFile({ name: "candidate.docx", size: 2048 }), /PDF file/);
+  assert.match(validateResumeFile({ name: "candidate.pdf", size: 2048, type: "text/plain" }), /recognized as a PDF/);
   assert.match(validateResumeFile({ name: "candidate.exe", size: 2048 }), /not supported/);
   assert.match(validateResumeFile({ name: "candidate.pdf", size: 0 }), /empty/);
-  assert.match(validateResumeFile({ name: "candidate.pdf", size: MAX_RESUME_BYTES + 1 }), /10 MB/);
+  assert.match(validateResumeFile({ name: "candidate.pdf", size: MAX_RESUME_BYTES + 1 }), /5 MiB/);
 });
 
 function createProfile(overrides = {}) {

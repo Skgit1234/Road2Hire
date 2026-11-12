@@ -127,7 +127,11 @@ def download_resume(
             detail="Resume not found"
         )
 
-    file_path = Path(resume.file_path)
+    try:
+        file_path = get_resume_file_path(resume.file_path)
+    except ValueError as exc:
+        logger.error("Refusing to access resume %s outside upload directory", resume_id)
+        raise HTTPException(status_code=404, detail="Resume file not found") from exc
 
     if not file_path.is_file():
         raise HTTPException(
@@ -144,11 +148,14 @@ def download_resume(
 
 @router.post("/upload", response_model=ResumeUploadResponse)
 async def upload_resume(
-    user_id: int = Form(...),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    user_id: int | None = Form(None),
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
+    if user_id is not None and user_id != user.id:
+        raise HTTPException(status_code=403, detail="User ID does not match the authenticated user")
+
     original_name = file.filename or ""
 
     if not original_name or Path(original_name).suffix.lower() != ".pdf":
@@ -183,9 +190,6 @@ async def upload_resume(
     file_path = None
 
     try:
-        if user_id != user.id:
-            raise HTTPException(status_code=403, detail="Cannot upload for another user")
-
         stored_name, file_path = save_resume_file(contents)
 
         resume = Resume(
@@ -249,18 +253,17 @@ def analyze_resume(
     ).first()
 
     if not resume:
-        raise HTTPException(
-            status_code=404,
-            detail="Resume not found"
-        )
+        raise HTTPException(status_code=404, detail="Resume not found")
 
-    file_path = Path(resume.file_path)
+    # Preserve local path validation. Never access a stored path directly.
+    try:
+        file_path = get_resume_file_path(resume.file_path)
+    except ValueError as exc:
+        logger.error("Refusing to access resume %s outside upload directory", resume_id)
+        raise HTTPException(status_code=404, detail="Resume file not found") from exc
 
     if not file_path.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail="Resume file not found on server"
-        )
+        raise HTTPException(status_code=404, detail="Resume file not found on server")
 
     try:
         result = process_resume(file_path)
@@ -283,6 +286,7 @@ def analyze_resume(
         profile = db.query(CandidateProfile).filter(
             CandidateProfile.user_id == user.id
         ).first()
+
         if profile is None:
             profile = CandidateProfile(user_id=user.id)
             db.add(profile)

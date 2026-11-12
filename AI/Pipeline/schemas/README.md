@@ -10,8 +10,8 @@
 
 This directory provides versioned JSON Schema specifications governing the interface contracts between the Road2Hire AI/ML pipeline and backend service layers (e.g. FastAPI route handlers, task workers, and persistent stores).
 
-- [`pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json): Standard canonical output contract for successful pipeline runs.
-- [`pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json): Structured error payload contract for pipeline exceptions and validation failures.
+- [`pipeline_output.schema.json`](AI/Pipeline/schemas/pipeline_output.schema.json): Standard canonical output contract for successful pipeline runs.
+- [`pipeline_error.schema.json`](AI/Pipeline/schemas/pipeline_error.schema.json): Structured error payload contract for pipeline exceptions and validation failures.
 
 ---
 
@@ -62,4 +62,3 @@ The error contract (`pipeline_error.schema.json`) standardizes failures across a
 4. **Timestamps:** ISO-8601 strings in UTC or local timezone format (e.g. `2026-11-07T14:10:00.000000`).
 5. **Float Precision:** Coverage scores are normalized in `[0.0, 1.0]`; model probabilities are normalized to sum to `1.0`; timings are rounded to 4 decimal places.
 6. **No Equivalence Claim:** Probabilities from the logistic regression classifier are uncalibrated heuristics; they must never be presented as validated real-world qualification percentages.
-

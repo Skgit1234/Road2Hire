@@ -1,0 +1,8 @@
+# AI runtime dependencies for the Road2Hire unified pipeline.
+# Versions match the currently validated local environment.
+networkx==3.6.1
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.1
+joblib==1.6.0
+shap==0.51.0

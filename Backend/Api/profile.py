@@ -26,13 +26,19 @@ def get_current_user(
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
-        email = payload.get("sub")
-        if not email:
+        subject = payload.get("sub")
+        if not isinstance(subject, str) or not subject.strip():
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    user = db.query(User).filter(User.email == email).first()
+    # New tokens use a stable numeric user ID. Continue accepting legacy
+    # email-subject tokens so existing sessions survive the transition.
+    if subject.isdecimal():
+        user = db.query(User).filter(User.id == int(subject)).first()
+    else:
+        user = db.query(User).filter(User.email == subject).first()
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
@@ -58,6 +64,7 @@ def get_profile(user: User = Depends(get_current_user)):
     return user
 
 
+
 @router.get("/candidate", response_model=CandidateProfileResponse)
 def get_candidate_profile(
     user: User = Depends(get_current_user),
@@ -78,7 +85,6 @@ def get_candidate_profile(
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
     return profile
-
 
 @router.patch("/", response_model=ProfileResponse, include_in_schema=False)
 @router.patch("", response_model=ProfileResponse)

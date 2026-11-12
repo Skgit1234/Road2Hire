@@ -3,10 +3,10 @@
 **Milestone:** Phase 3 — AI/ML Pipeline Finalization & Handover Preparation  
 **Status:** Complete  
 **Date:** November 2026  
-**Pipeline Orchestrator:** [`AI/Pipeline/pipeline.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline.py)  
-**Schema Contract:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)  
-**Integration Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
-**Architecture Audit:** [`AI/Pipeline/phase3_architecture_audit.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/phase3_architecture_audit.md)  
+**Pipeline Orchestrator:** [`AI/Pipeline/pipeline.py`](AI/Pipeline/pipeline.py)  
+**Schema Contract:** [`AI/Pipeline/pipeline_schema.py`](AI/Pipeline/pipeline_schema.py)  
+**Integration Guide:** `Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`
+**Architecture Audit:** [`AI/Pipeline/phase3_architecture_audit.md`](AI/Pipeline/phase3_architecture_audit.md)  
 
 ---
 
@@ -181,4 +181,3 @@ The AI/ML pipeline is fully stabilized, verified, and ready for backend service 
 - Programmatic Python API returning typed, JSON-serializable dataclasses.
 - Clear HTTP 400 vs 500 exception mapping.
 - All 323 automated tests passing.
-

@@ -11,7 +11,6 @@ from AI.Candidate_Profile.section_parsers import (
     parse_experience_section,
     parse_projects_section,
 )
-from AI.Resume_Processing.resume_pipeline import process_resume
 from AI.Skill_Extraction.skill_embeddings import generate_skill_embeddings
 from AI.Skill_Extraction.skill_extractor import extract_skills
 from AI.Skill_Extraction.skill_taxonomy_mapper import map_skills_to_esco
@@ -66,6 +65,8 @@ def assemble_candidate_profile(
 
 def build_candidate_profile(pdf_path: str | Path) -> dict[str, Any]:
     """Combine resume processing, skill extraction, mapping, and embeddings."""
+    from AI.Resume_Processing.resume_pipeline import process_resume
+
     resume_data = process_resume(pdf_path)
     extracted_data = extract_skills(resume_data)
 

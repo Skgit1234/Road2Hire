@@ -9,6 +9,7 @@ from Models import Job, LearningTask, PipelineRun, Resume, SkillGap, User
 from Schemas.job import JobCreate, JobMatchRequest
 from Schemas.skill_gap import SkillGapAnalysisRequest
 from Schemas.task import TaskProgressUpdate
+from Services.roadmap_utils import logical_item_key
 
 
 def _canonical_output():
@@ -193,7 +194,8 @@ def test_job_matching_uses_saved_job_and_resume_ownership(
 
     assert response.job.id == job.id
     assert response.run.id == run.id
-    assert response.job_specific_required_skills_applied is False
+    assert response.job_specific_required_skills_applied is True
+    assert response.job_specific_matching["status"] == "completed"
 
 
 def test_skill_gap_analysis_and_history(
@@ -263,23 +265,29 @@ def test_shap_explanations_latest_and_run_specific(fake_session, test_user):
     assert specific.pipeline_run_id == run.id
 
 
-class _FakeInsert:
-    def values(self, rows):
-        self.rows = rows
-        return self
-
-    def on_conflict_do_nothing(self, **_kwargs):
-        return self
-
-
 def test_recommendations_roadmap_phases_items_and_resources(
     fake_session,
     test_user,
-    monkeypatch,
 ):
     run = _run()
-    db = fake_session({PipelineRun: [run]})
-    monkeypatch.setattr(career_insights, "pg_insert", lambda _model: _FakeInsert())
+    item = _canonical_output()["learning_roadmap"]["phases"][0]["items"][0]
+    task = LearningTask(
+        id=21,
+        pipeline_run_id=run.id,
+        logical_item_key=logical_item_key(
+            1, item["skill_name"], item["esco_uri"]
+        ),
+        roadmap_phase_number=1,
+        roadmap_phase_name="Foundations",
+        skill_name="Python",
+        skill_uri=item["esco_uri"],
+        priority="Critical",
+        status="not_started",
+        progress=0,
+        roadmap_item_data=item,
+        updated_at=run.created_at,
+    )
+    db = fake_session({PipelineRun: [run], LearningTask: [task]})
 
     recommendations = career_insights.get_latest_recommendations(db, test_user)
     roadmap = career_insights.get_latest_learning_roadmap(db, test_user)

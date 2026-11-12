@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const navigation = [
   { name: "Dashboard", href: "/" },
   { name: "Resume", href: "/resume" },
+  { name: "Jobs", href: "/jobs" },
   { name: "Skill Gap", href: "/skill-gap" },
   { name: "Career Readiness", href: "/career-readiness" },
   { name: "Learning Roadmap", href: "/learning-roadmap" },
   { name: "AI Career Assistant", href: "/career-assistant" },
+  { name: "Sign in", href: "/login" },
 ];
 
 const secondaryNavigation = [
@@ -47,6 +50,13 @@ function NavIcon({ name, active = false }: { name: string; active?: boolean }) {
           <path d="M7 4.5h6l4 4V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z" />
           <path d="M13 4.5v4h4" />
           <path d="M8.5 12.5h7M8.5 15.5h7" />
+        </svg>
+      );
+    case "Jobs":
+      return (
+        <svg {...sharedProps}>
+          <rect x="4" y="7" width="16" height="12" rx="2" />
+          <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M4 11h16M10 11v2h4v-2" />
         </svg>
       );
     case "Skill Gap":
@@ -115,6 +125,7 @@ function NavIcon({ name, active = false }: { name: string; active?: boolean }) {
 }
 
 export default function Sidebar() {
+  const { session, isRestoring, signOut } = useAuth();
   const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -241,7 +252,7 @@ export default function Sidebar() {
 
           <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Sidebar navigation">
             <div className="space-y-1.5">
-              {navigation.map((item) => {
+              {navigation.filter((item) => !isRestoring || item.name !== "Sign in").map((item) => {
                 const active = getIsActive(item.href);
 
                 return (
@@ -265,7 +276,7 @@ export default function Sidebar() {
                     >
                       <NavIcon name={item.name} active={active} />
                     </span>
-                    <span>{item.name}</span>
+                    <span>{item.name === "Sign in" && session ? "Account" : item.name}</span>
                     {item.name === "AI Career Assistant" ? (
                       <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                         New
@@ -306,11 +317,24 @@ export default function Sidebar() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-white">Arjun Mehta</p>
+                  <p className="truncate text-sm font-semibold text-white">
+                    {isRestoring ? "Restoring session..." : session?.profile.name ?? "Guest"}
+                  </p>
                 </div>
-                <p className="truncate text-[11px] text-slate-300">Frontend Developer</p>
+                <p className="truncate text-[11px] text-slate-300">
+                  {isRestoring ? "Please wait..." : session?.profile.email ?? "Sign in to your account"}
+                </p>
               </div>
             </div>
+            {session && (
+              <button
+                type="button"
+                onClick={signOut}
+                className="mt-2 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
+                Sign out
+              </button>
+            )}
 
             <div className="mt-3 rounded-xl bg-slate-800/70 p-3">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Upgrade to Pro</p>
