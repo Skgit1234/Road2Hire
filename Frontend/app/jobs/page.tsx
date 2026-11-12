@@ -82,7 +82,7 @@ function MatchResult({ result }: { result: JobMatchingResponse }) {
                   </div>
                   <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                     <div><dt className="font-medium text-slate-500">Candidate skill</dt><dd className="mt-0.5 text-slate-800">{requirement.candidate_skill ?? "No candidate evidence"}</dd></div>
-                    <div><dt className="font-medium text-slate-500">Similarity</dt><dd className="mt-0.5 text-slate-800">{requirement.similarity_score === null ? "Not available" : `${(requirement.similarity_score * 100).toFixed(1)}%`}</dd></div>
+                    <div><dt className="font-medium text-slate-500">Cosine similarity</dt><dd className="mt-0.5 text-slate-800">{requirement.similarity_score === null ? "Not available" : requirement.similarity_score.toFixed(3)}</dd></div>
                   </dl>
                   {requirement.evidence && <p className="mt-3 text-sm leading-6 text-slate-600"><span className="font-medium text-slate-700">Evidence: </span>{requirement.evidence}</p>}
                   {requirement.related_evidence.length > 0 && (
@@ -91,7 +91,7 @@ function MatchResult({ result }: { result: JobMatchingResponse }) {
                       <ul className="mt-2 space-y-2 text-sm text-amber-950">
                         {requirement.related_evidence.map((evidence, relatedIndex) => (
                           <li key={`${evidence.candidate_skill}-${relatedIndex}`}>
-                            <span className="font-medium">{evidence.candidate_skill}</span> · {(evidence.similarity_score * 100).toFixed(1)}% similarity · {evidence.relation}
+                            <span className="font-medium">{evidence.candidate_skill}</span> · cosine similarity {evidence.similarity_score.toFixed(3)} · {evidence.relation}
                           </li>
                         ))}
                       </ul>

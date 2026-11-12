@@ -357,7 +357,7 @@ test("Jobs page creates a job and displays authenticated job-specific match evid
         thresholds_are_provisional: true,
         requirements: [
           { name: "Python", importance: "essential", canonical_uri: null, matched: true, candidate_skill: "Python", match_status: "confirmed_match", similarity_score: 1, evidence: "Canonical/exact equality", related_evidence: [] },
-          { name: "SQL", importance: "optional", canonical_uri: null, matched: false, candidate_skill: "PostgreSQL", match_status: "related_skill", similarity_score: 0.71, evidence: "Database-related candidate skill", related_evidence: [{ candidate_skill: "PostgreSQL", similarity_score: 0.71, relation: "Database ecosystem", is_equivalent: false }] },
+          { name: "SQL", importance: "optional", canonical_uri: null, matched: false, candidate_skill: "PostgreSQL", match_status: "related_skill", similarity_score: -0.24, evidence: "Database-related candidate skill", related_evidence: [{ candidate_skill: "PostgreSQL", similarity_score: -0.24, relation: "Database ecosystem", is_equivalent: false }] },
         ],
         scores: { essential: 1, optional: 0, overall: 0.5 },
       },
@@ -398,6 +398,7 @@ test("Jobs page creates a job and displays authenticated job-specific match evid
   await expect(page.getByText("overall coverage", { exact: false })).toBeVisible();
   await expect(page.getByText("confirmed match", { exact: true })).toBeVisible();
   await expect(page.getByText("related skill", { exact: true })).toBeVisible();
+  await expect(page.getByText("cosine similarity -0.240", { exact: false })).toBeVisible();
   await expect(page.getByText(/Only confirmed matches count toward coverage/)).toBeVisible();
   expect(matchRequest).toEqual({
     authorization: "Bearer e2e-access-token",

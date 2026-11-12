@@ -500,6 +500,10 @@ function isNullableScore(value: unknown): value is number | null {
   return value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1);
 }
 
+function isNullableCosineSimilarity(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isFinite(value) && value >= -1 && value <= 1);
+}
+
 function isJobSkillRequirement(value: unknown): value is JobSkillRequirement {
   return isRecord(value) && typeof value.skill_name === "string" && value.skill_name.trim().length > 0 &&
     (value.importance === "essential" || value.importance === "optional") &&
@@ -539,13 +543,13 @@ function isJobRequirementMatch(value: unknown): value is JobRequirementMatch {
       !isNullableString(value.canonical_uri) || typeof value.matched !== "boolean" ||
       !isNullableString(value.candidate_skill) ||
       !jobMatchStatuses.includes(value.match_status as typeof jobMatchStatuses[number]) ||
-      !isNullableScore(value.similarity_score) || !isNullableString(value.evidence) ||
+      !isNullableCosineSimilarity(value.similarity_score) || !isNullableString(value.evidence) ||
       !Array.isArray(value.related_evidence)) return false;
 
   if (!value.related_evidence.every((item: unknown) => isRecord(item) &&
       typeof item.candidate_skill === "string" &&
       typeof item.similarity_score === "number" && Number.isFinite(item.similarity_score) &&
-      item.similarity_score >= 0 && item.similarity_score <= 1 &&
+      item.similarity_score >= -1 && item.similarity_score <= 1 &&
       typeof item.relation === "string" && typeof item.is_equivalent === "boolean")) return false;
 
   return value.matched === (value.match_status === "confirmed_match");

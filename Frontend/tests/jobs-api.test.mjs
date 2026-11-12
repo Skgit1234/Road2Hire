@@ -124,6 +124,28 @@ test("job matching sends the selected resume and validates nested result evidenc
   assert.deepEqual(result.job_specific_matching.requirements.map((item) => item.match_status), ["confirmed_match", "related_skill"]);
 });
 
+test("job matching preserves negative cosine similarity in related evidence", async () => {
+  const negativeCosineResult = {
+    ...matchResponse,
+    job_specific_matching: {
+      ...matching,
+      requirements: [{
+        ...matching.requirements[1],
+        similarity_score: -0.24,
+        related_evidence: [{
+          candidate_skill: "PostgreSQL",
+          similarity_score: -0.24,
+          relation: "Database ecosystem",
+          is_equivalent: false,
+        }],
+      }],
+    },
+  };
+  const result = await matchResumeToJob(12, 31, "jobs-token", async () => Response.json(negativeCosineResult));
+  assert.equal(result.job_specific_matching.requirements[0].similarity_score, -0.24);
+  assert.equal(result.job_specific_matching.requirements[0].related_evidence[0].similarity_score, -0.24);
+});
+
 test("job APIs reject missing authentication and invalid IDs before fetching", async () => {
   const noFetch = async () => { throw new Error("fetch must not be called"); };
   await assert.rejects(listJobs(" ", noFetch), /Sign in to manage saved jobs/);
@@ -149,4 +171,6 @@ test("job and matching response validators reject malformed schema and evidence"
   await assert.rejects(matchResumeToJob(12, 31, "token", async () => Response.json({ ...matchResponse, job_specific_matching: { ...matching, scores: { essential: 1.1, optional: 0, overall: 0.5 } } })), /invalid job matching response/);
   await assert.rejects(matchResumeToJob(12, 31, "token", async () => Response.json({ ...matchResponse, job_specific_matching: { ...matching, requirements: [{ ...matching.requirements[0], matched: true, match_status: "uncertain_match" }] } })), /invalid job matching response/);
   await assert.rejects(matchResumeToJob(12, 31, "token", async () => Response.json({ ...matchResponse, job_specific_matching: { ...matching, requirements: [{ ...matching.requirements[1], related_evidence: [{ candidate_skill: "PostgreSQL", similarity_score: 2, relation: "related", is_equivalent: false }] }] } })), /invalid job matching response/);
+  await assert.rejects(matchResumeToJob(12, 31, "token", async () => Response.json({ ...matchResponse, job_specific_matching: { ...matching, requirements: [{ ...matching.requirements[1], similarity_score: -1.01 }] } })), /invalid job matching response/);
+  await assert.rejects(matchResumeToJob(12, 31, "token", async () => Response.json({ ...matchResponse, job_specific_matching: { ...matching, requirements: [{ ...matching.requirements[1], related_evidence: [{ candidate_skill: "PostgreSQL", similarity_score: -1.01, relation: "related", is_equivalent: false }] }] } })), /invalid job matching response/);
 });
