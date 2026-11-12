@@ -60,7 +60,7 @@ function getSkillLabel(item: Record<string, unknown>): string {
   const target = typeof item.target_skill === "string" ? item.target_skill : null;
   const label = typeof item.skill_label === "string" ? item.skill_label : null;
 
-  if (candidate && target && candidate !== target) return `${candidate} â†’ ${target}`;
+  if (candidate && target && candidate !== target) return `${candidate} → ${target}`;
   return candidate ?? target ?? label ?? "Skill detail unavailable";
 }
 
@@ -169,7 +169,7 @@ function LiveSkillGapAnalysis() {
           Sign in to run analysis. <Link className="font-semibold underline" href="/login">Go to sign in</Link>
         </p>
       ) : resumeState === "loading" ? (
-        <p className="text-sm text-slate-600" role="status">Loading your saved resumesâ€¦</p>
+        <p className="text-sm text-slate-600" role="status">Loading your saved resumes…</p>
       ) : resumeState === "error" ? (
         <p className="text-sm text-rose-800" role="alert">{resumeError}</p>
       ) : resumes.length === 0 ? (
@@ -227,13 +227,13 @@ function LiveSkillGapAnalysis() {
             disabled={requestState === "loading"}
             className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-wait disabled:opacity-60 md:col-span-2"
           >
-            {requestState === "loading" ? "Analyzingâ€¦" : "Run AI analysis"}
+            {requestState === "loading" ? "Analyzing…" : "Run AI analysis"}
           </button>
         </form>
       )}
 
       {requestState === "loading" && (
-        <p className="mt-4 text-sm text-slate-600" role="status">Running the unified AI pipelineâ€¦</p>
+        <p className="mt-4 text-sm text-slate-600" role="status">Running the unified AI pipeline…</p>
       )}
 
       {requestState === "error" && (
@@ -248,7 +248,7 @@ function LiveSkillGapAnalysis() {
                 {occupationLabel ?? "Skill-gap analysis result"}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Resume #{selectedResumeId} Â· Pipeline run #{result.pipeline_run_id}
+                Resume #{selectedResumeId} · Pipeline run #{result.pipeline_run_id}
               </p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold capitalize text-slate-700">
@@ -435,7 +435,7 @@ export default function SkillGapPage() {
             <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Skill comparisons</h2>
-                <p className="mt-1 text-sm text-slate-500">Proficiency levels use a consistent 0Ã¢â‚¬â€œ100 scale.</p>
+                <p className="mt-1 text-sm text-slate-500">Proficiency levels use a consistent 0–100 scale.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -474,7 +474,7 @@ export default function SkillGapPage() {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 py-4 text-xs text-slate-500" aria-label="Comparison legend">
               <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />Current</span>
               <span className="inline-flex items-center gap-2"><span className="h-3 w-0 border-l-2 border-dashed border-slate-700" />Required target</span>
-              <span className="ml-auto text-slate-400">0 = foundational Ã‚Â· 100 = advanced</span>
+              <span className="ml-auto text-slate-400">0 = foundational · 100 = advanced</span>
             </div>
 
             <div className="space-y-3">
@@ -491,7 +491,7 @@ export default function SkillGapPage() {
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
                           Current <span className="font-semibold text-slate-700">{skill.current}/100</span>
-                          <span className="mx-2 text-slate-300">Ã‚Â·</span>
+                          <span className="mx-2 text-slate-300">·</span>
                           Target <span className="font-semibold text-slate-700">{skill.target}/100</span>
                         </p>
                       </div>
@@ -545,7 +545,7 @@ export default function SkillGapPage() {
                 ))}
               </ol>
               <Link href="/learning-roadmap" className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2">
-                Open learning roadmap <span aria-hidden="true">Ã¢â€ â€™</span>
+                Open learning roadmap <span aria-hidden="true">→</span>
               </Link>
               <Link href="/career-readiness" className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
                 Review career readiness
