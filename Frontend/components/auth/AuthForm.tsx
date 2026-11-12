@@ -7,7 +7,7 @@ import { registerUser, type ProfileUpdate } from "@/lib/api-client";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const isLogin = mode === "login";
-  const { session, signIn, signOut, updateProfile } = useAuth();
+  const { session, isRestoring, signIn, signOut, updateProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -80,7 +80,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </p>
         </header>
 
-        {session && isLogin ? (
+        {isRestoring ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" role="status" aria-live="polite">
+            <p className="text-sm text-slate-600">Restoring your session…</p>
+          </section>
+        ) : session && isLogin ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" aria-live="polite">
             <p className="font-semibold text-emerald-700">Signed in as {session.profile.name}.</p>
             <p className="mt-1 text-sm text-slate-600">{session.profile.email}</p>

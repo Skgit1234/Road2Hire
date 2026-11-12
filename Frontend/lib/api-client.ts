@@ -33,6 +33,87 @@ export type ResumeRecord = {
   download_url?: string;
 };
 
+export type JobSkillRequirement = {
+  skill_name: string;
+  importance: "essential" | "optional";
+  canonical_uri: string | null;
+};
+
+export type JobCreateRequest = {
+  title: string;
+  description: string;
+  target_occupation: string;
+  required_skills: Array<Pick<JobSkillRequirement, "skill_name" | "importance"> & { canonical_uri?: string | null }>;
+};
+
+export type JobRecord = {
+  id: number;
+  user_id: number;
+  title: string;
+  description: string;
+  target_occupation: string;
+  required_skills: JobSkillRequirement[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type JobPipelineRun = {
+  id: number;
+  status: "pending" | "running" | "completed" | "failed";
+  selection_mode: "explicit" | "auto_selected";
+  target_occupation_uri: string | null;
+  target_occupation_title: string | null;
+  overall_skill_coverage_score: number | null;
+  essential_skill_coverage_score: number | null;
+  optional_skill_coverage_score: number | null;
+  readiness_class: string | null;
+  is_ood: boolean;
+  canonical_output: Record<string, unknown>;
+  error_code: string | null;
+  error_stage: string | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export type JobRequirementMatch = {
+  name: string;
+  importance: "essential" | "optional";
+  canonical_uri: string | null;
+  matched: boolean;
+  candidate_skill: string | null;
+  match_status: "confirmed_match" | "uncertain_match" | "related_skill" | "non_match" | "missing";
+  similarity_score: number | null;
+  evidence: string | null;
+  related_evidence: Array<{
+    candidate_skill: string;
+    similarity_score: number;
+    relation: string;
+    is_equivalent: boolean;
+  }>;
+};
+
+export type JobSpecificMatching = {
+  job_id: number;
+  pipeline_run_id: number;
+  status: "completed" | "no_requirements";
+  candidate_skill_source: "pipeline.skills.extracted_skills";
+  matching_method: "semantic_skill_matcher";
+  canonical_uri_matching: "not_used" | "unavailable" | "used" | "unresolved_or_unmatched";
+  requirements: JobRequirementMatch[];
+  scores: { essential: number | null; optional: number | null; overall: number | null };
+  candidate_skills_are_verified?: boolean;
+  thresholds_are_provisional?: boolean;
+};
+
+export type JobMatchingResponse = {
+  job: JobRecord;
+  run: JobPipelineRun;
+  matching_basis: string;
+  job_specific_required_skills_applied: boolean;
+  job_specific_matching: JobSpecificMatching | null;
+};
+
 export type ResumeUploadResponse = {
   message: string;
   resume: ResumeRecord;
@@ -405,6 +486,147 @@ export async function deleteResume(
   }
 
   return { message: payload.message, resume_id: payload.resume_id as number };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isNullableScore(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1);
+}
+
+function isJobSkillRequirement(value: unknown): value is JobSkillRequirement {
+  return isRecord(value) && typeof value.skill_name === "string" && value.skill_name.trim().length > 0 &&
+    (value.importance === "essential" || value.importance === "optional") &&
+    isNullableString(value.canonical_uri);
+}
+
+function isJobRecord(value: unknown): value is JobRecord {
+  return isRecord(value) && Number.isInteger(value.id) && Number(value.id) > 0 &&
+    Number.isInteger(value.user_id) && Number(value.user_id) > 0 &&
+    typeof value.title === "string" && typeof value.description === "string" &&
+    typeof value.target_occupation === "string" && Array.isArray(value.required_skills) &&
+    value.required_skills.every(isJobSkillRequirement) &&
+    typeof value.created_at === "string" && !Number.isNaN(Date.parse(value.created_at)) &&
+    typeof value.updated_at === "string" && !Number.isNaN(Date.parse(value.updated_at));
+}
+
+function isPipelineRun(value: unknown): value is JobPipelineRun {
+  const nullableNumber = (item: unknown) => item === null || (typeof item === "number" && Number.isFinite(item) && item >= 0 && item <= 1);
+  return isRecord(value) && Number.isInteger(value.id) && Number(value.id) > 0 &&
+    ["pending", "running", "completed", "failed"].includes(String(value.status)) &&
+    ["explicit", "auto_selected"].includes(String(value.selection_mode)) &&
+    isNullableString(value.target_occupation_uri) && isNullableString(value.target_occupation_title) &&
+    nullableNumber(value.overall_skill_coverage_score) && nullableNumber(value.essential_skill_coverage_score) &&
+    nullableNumber(value.optional_skill_coverage_score) && isNullableString(value.readiness_class) &&
+    typeof value.is_ood === "boolean" && isRecord(value.canonical_output) &&
+    isNullableString(value.error_code) && isNullableString(value.error_stage) && isNullableString(value.error_message) &&
+    typeof value.created_at === "string" && !Number.isNaN(Date.parse(value.created_at)) &&
+    (value.completed_at === null || (typeof value.completed_at === "string" && !Number.isNaN(Date.parse(value.completed_at))));
+}
+
+const jobMatchStatuses = ["confirmed_match", "uncertain_match", "related_skill", "non_match", "missing"] as const;
+const uriMatchStatuses = ["not_used", "unavailable", "used", "unresolved_or_unmatched"] as const;
+
+function isJobRequirementMatch(value: unknown): value is JobRequirementMatch {
+  if (!isRecord(value) || typeof value.name !== "string" || !value.name.trim() ||
+      !["essential", "optional"].includes(String(value.importance)) ||
+      !isNullableString(value.canonical_uri) || typeof value.matched !== "boolean" ||
+      !isNullableString(value.candidate_skill) ||
+      !jobMatchStatuses.includes(value.match_status as typeof jobMatchStatuses[number]) ||
+      !isNullableScore(value.similarity_score) || !isNullableString(value.evidence) ||
+      !Array.isArray(value.related_evidence)) return false;
+
+  if (!value.related_evidence.every((item: unknown) => isRecord(item) &&
+      typeof item.candidate_skill === "string" &&
+      typeof item.similarity_score === "number" && Number.isFinite(item.similarity_score) &&
+      item.similarity_score >= 0 && item.similarity_score <= 1 &&
+      typeof item.relation === "string" && typeof item.is_equivalent === "boolean")) return false;
+
+  return value.matched === (value.match_status === "confirmed_match");
+}
+
+function isJobSpecificMatching(value: unknown): value is JobSpecificMatching {
+  if (!isRecord(value) || !Number.isInteger(value.job_id) || Number(value.job_id) <= 0 ||
+      !Number.isInteger(value.pipeline_run_id) || Number(value.pipeline_run_id) <= 0 ||
+      !["completed", "no_requirements"].includes(String(value.status)) ||
+      value.candidate_skill_source !== "pipeline.skills.extracted_skills" ||
+      value.matching_method !== "semantic_skill_matcher" ||
+      !uriMatchStatuses.includes(value.canonical_uri_matching as typeof uriMatchStatuses[number]) ||
+      !Array.isArray(value.requirements) || !value.requirements.every(isJobRequirementMatch) ||
+      !isRecord(value.scores) || !isNullableScore(value.scores.essential) ||
+      !isNullableScore(value.scores.optional) || !isNullableScore(value.scores.overall)) return false;
+
+  if (value.candidate_skills_are_verified !== undefined && typeof value.candidate_skills_are_verified !== "boolean") return false;
+  if (value.thresholds_are_provisional !== undefined && typeof value.thresholds_are_provisional !== "boolean") return false;
+  if (value.status === "no_requirements" && value.requirements.length !== 0) return false;
+  return true;
+}
+
+function parseJobMatchingResponse(value: unknown): JobMatchingResponse {
+  if (!isRecord(value) || !isJobRecord(value.job) || !isPipelineRun(value.run) ||
+      typeof value.matching_basis !== "string" || typeof value.job_specific_required_skills_applied !== "boolean" ||
+      !(value.job_specific_matching === null || isJobSpecificMatching(value.job_specific_matching))) {
+    throw new Error("The API returned an invalid job matching response.");
+  }
+  return value as unknown as JobMatchingResponse;
+}
+
+function authenticatedJobRequest(path: string, token: string, method: "GET" | "POST", fetchRequest: typeof fetch, body?: unknown) {
+  if (!token.trim()) throw new Error("Sign in to manage saved jobs.");
+  return requestJson(path, {
+    method,
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  }, fetchRequest);
+}
+
+export async function listJobs(
+  accessToken: string,
+  fetchRequest: typeof fetch = fetch,
+): Promise<JobRecord[]> {
+  const payload = await authenticatedJobRequest("/jobs", accessToken, "GET", fetchRequest);
+  if (!Array.isArray(payload) || !payload.every(isJobRecord)) {
+    throw new Error("The API returned an invalid job list.");
+  }
+  return payload;
+}
+
+export async function createJob(
+  details: JobCreateRequest,
+  accessToken: string,
+  fetchRequest: typeof fetch = fetch,
+): Promise<JobRecord> {
+  if (!details.title.trim() || !details.description.trim() || !details.target_occupation.trim() ||
+      !Array.isArray(details.required_skills) || details.required_skills.some((item) =>
+        !item.skill_name.trim() || !["essential", "optional"].includes(item.importance))) {
+    throw new Error("Provide a title, description, target occupation, and valid required skills.");
+  }
+  const payload = await authenticatedJobRequest("/jobs", accessToken, "POST", fetchRequest, details);
+  if (!isJobRecord(payload)) throw new Error("The API returned an invalid job response.");
+  return payload;
+}
+
+export async function matchResumeToJob(
+  jobId: number,
+  resumeId: number,
+  accessToken: string,
+  fetchRequest: typeof fetch = fetch,
+): Promise<JobMatchingResponse> {
+  if (!accessToken.trim()) throw new Error("Sign in to match a resume to a job.");
+  if (!Number.isInteger(jobId) || jobId <= 0) throw new Error("A valid saved job is required for matching.");
+  if (!Number.isInteger(resumeId) || resumeId <= 0) throw new Error("A valid saved resume is required for matching.");
+  const payload = await authenticatedJobRequest(`/jobs/${jobId}/matches`, accessToken, "POST", fetchRequest, { resume_id: resumeId });
+  return parseJobMatchingResponse(payload);
 }
 function isResumeSkillOccurrence(value: unknown): value is ResumeSkillOccurrence {
   return typeof value === "object" && value !== null &&

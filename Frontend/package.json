@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test tests/profile-state.test.mjs tests/health-check.test.mjs tests/auth-api.test.mjs tests/resume-api.test.mjs tests/skill-gap-api.test.mjs tests/career-readiness-api.test.mjs tests/learning-roadmap-api.test.mjs tests/dashboard-api.test.mjs tests/pipeline-api.test.mjs",
+    "test": "node --experimental-strip-types --test tests/profile-state.test.mjs tests/health-check.test.mjs tests/auth-api.test.mjs tests/resume-api.test.mjs tests/jobs-api.test.mjs tests/skill-gap-api.test.mjs tests/career-readiness-api.test.mjs tests/learning-roadmap-api.test.mjs tests/dashboard-api.test.mjs tests/pipeline-api.test.mjs",
     "test:e2e": "node tests/e2e/run-playwright.mjs"
   },
   "dependencies": {

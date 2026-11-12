@@ -3,6 +3,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 const routes = [
   ["/", "Welcome to Road2Hire"],
   ["/resume", "Resume and candidate profile"],
+  ["/jobs", "Jobs"],
   ["/skill-gap", "Your skill gap"],
   ["/career-readiness", "Career readiness"],
   ["/learning-roadmap", "Learning roadmap"],
@@ -178,6 +179,32 @@ test("authentication session is restored after a page reload", async ({ page }) 
   await expect(page.getByText("Avery Candidate", { exact: true })).toBeVisible();
 });
 
+test("login form stays hidden until session restoration finishes", async ({ page }) => {
+  await signIn(page);
+
+  const restorationStarted = deferred();
+  const finishRestoration = deferred();
+  await page.route("**/profile", async (route) => {
+    restorationStarted.resolve();
+    await finishRestoration.promise;
+    await jsonResponse(route, 200, {
+      id: 7,
+      name: "Avery Candidate",
+      email: "avery@example.test",
+    });
+  });
+
+  await page.reload();
+  await restorationStarted.promise;
+  await expect(page.getByRole("status").filter({ hasText: "Restoring your session…" })).toBeVisible();
+  await expect(page.getByLabel("Email")).toHaveCount(0);
+  await expect(page.getByLabel("Password")).toHaveCount(0);
+
+  finishRestoration.resolve();
+  await expect(page.locator("main").getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByText("Avery Candidate", { exact: true })).toBeVisible();
+});
+
 test("dashboard loads authenticated summary and recent activity from mocked APIs", async ({ page }) => {
   await signIn(page);
   await navigateFromSidebar(page, "Dashboard");
@@ -258,6 +285,125 @@ test("resume analysis displays a mocked backend error without crashing the page"
   await page.getByRole("button", { name: "Analyze", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "This PDF contains no extractable text. OCR is required." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Resume analysis results" })).toBeVisible();
+});
+
+test("Jobs page creates a job and displays authenticated job-specific match evidence", async ({ page }) => {
+  let savedJobs: Array<Record<string, unknown>> = [];
+  const matchStarted = deferred();
+  const releaseMatch = deferred();
+  let createRequest: { authorization?: string; body?: unknown } = {};
+  let matchRequest: { authorization?: string; body?: unknown; path?: string } = {};
+  const savedJob = {
+    id: 51,
+    user_id: 7,
+    title: "Software Developer",
+    description: "Develop and maintain software applications.",
+    target_occupation: "Software Developer",
+    required_skills: [
+      { skill_name: "Python", importance: "essential", canonical_uri: null },
+      { skill_name: "SQL", importance: "optional", canonical_uri: null },
+    ],
+    created_at: "2026-11-12T10:00:00Z",
+    updated_at: "2026-11-12T10:00:00Z",
+  };
+
+  await page.route("**/jobs", async (route) => {
+    if (route.request().method() === "GET") return jsonResponse(route, 200, savedJobs);
+    createRequest = {
+      authorization: route.request().headers().authorization,
+      body: route.request().postDataJSON(),
+    };
+    savedJobs = [savedJob];
+    await jsonResponse(route, 201, savedJob);
+  });
+  await page.route(/\/jobs\/\d+\/matches\/?$/, async (route) => {
+    matchRequest = {
+      authorization: route.request().headers().authorization,
+      body: route.request().postDataJSON(),
+      path: new URL(route.request().url()).pathname,
+    };
+    matchStarted.resolve();
+    await releaseMatch.promise;
+    await jsonResponse(route, 200, {
+      job: savedJob,
+      run: {
+        id: 81,
+        status: "completed",
+        selection_mode: "explicit",
+        target_occupation_uri: null,
+        target_occupation_title: "Software Developer",
+        overall_skill_coverage_score: 0.5,
+        essential_skill_coverage_score: 1,
+        optional_skill_coverage_score: 0,
+        readiness_class: null,
+        is_ood: false,
+        canonical_output: {},
+        error_code: null,
+        error_stage: null,
+        error_message: null,
+        created_at: "2026-11-12T10:00:00Z",
+        completed_at: "2026-11-12T10:01:00Z",
+      },
+      matching_basis: "Job-specific skills are compared separately from occupation analysis.",
+      job_specific_required_skills_applied: true,
+      job_specific_matching: {
+        job_id: 51,
+        pipeline_run_id: 81,
+        status: "completed",
+        candidate_skill_source: "pipeline.skills.extracted_skills",
+        candidate_skills_are_verified: false,
+        matching_method: "semantic_skill_matcher",
+        canonical_uri_matching: "not_used",
+        thresholds_are_provisional: true,
+        requirements: [
+          { name: "Python", importance: "essential", canonical_uri: null, matched: true, candidate_skill: "Python", match_status: "confirmed_match", similarity_score: 1, evidence: "Canonical/exact equality", related_evidence: [] },
+          { name: "SQL", importance: "optional", canonical_uri: null, matched: false, candidate_skill: "PostgreSQL", match_status: "related_skill", similarity_score: 0.71, evidence: "Database-related candidate skill", related_evidence: [{ candidate_skill: "PostgreSQL", similarity_score: 0.71, relation: "Database ecosystem", is_equivalent: false }] },
+        ],
+        scores: { essential: 1, optional: 0, overall: 0.5 },
+      },
+    });
+  });
+  await page.route("**/resumes", (route) => jsonResponse(route, 200, [resume]));
+
+  await signIn(page);
+  await navigateFromSidebar(page, "Jobs");
+  await expect(page.getByRole("heading", { name: "Jobs", exact: true })).toBeVisible();
+  await page.getByLabel("Job title").fill(savedJob.title);
+  await page.getByLabel("Description").fill(savedJob.description);
+  await page.getByLabel("Target occupation").fill(savedJob.target_occupation);
+  await page.locator("#job-skill-0").fill("Python");
+  await page.locator("#job-importance-0").selectOption("essential");
+  await page.getByRole("button", { name: "Add a skill" }).click();
+  await page.locator("#job-skill-1").fill("SQL");
+  await page.locator("#job-importance-1").selectOption("optional");
+  await page.getByRole("button", { name: "Save job" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved Software Developer." })).toBeVisible();
+  expect(createRequest.authorization).toBe("Bearer e2e-access-token");
+  expect(createRequest.body).toEqual({
+    title: savedJob.title,
+    description: savedJob.description,
+    target_occupation: savedJob.target_occupation,
+    required_skills: [
+      { skill_name: "Python", importance: "essential" },
+      { skill_name: "SQL", importance: "optional" },
+    ],
+  });
+
+  await page.getByLabel("Saved resume").selectOption(String(resume.id));
+  await page.getByRole("button", { name: "Run job matching" }).click();
+  await matchStarted.promise;
+  await expect(page.getByRole("button", { name: "Matching resume…" })).toBeDisabled();
+  releaseMatch.resolve();
+  await expect(page.getByRole("heading", { name: "Software Developer", exact: true })).toBeVisible();
+  await expect(page.getByText("overall coverage", { exact: false })).toBeVisible();
+  await expect(page.getByText("confirmed match", { exact: true })).toBeVisible();
+  await expect(page.getByText("related skill", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Only confirmed matches count toward coverage/)).toBeVisible();
+  expect(matchRequest).toEqual({
+    authorization: "Bearer e2e-access-token",
+    body: { resume_id: resume.id },
+    path: "/jobs/51/matches",
+  });
 });
 
 test("Career Readiness shows loading then the signed-in user's backend assessment", async ({ page }) => {

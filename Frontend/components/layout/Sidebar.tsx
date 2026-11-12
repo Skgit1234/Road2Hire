@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 const navigation = [
   { name: "Dashboard", href: "/" },
   { name: "Resume", href: "/resume" },
+  { name: "Jobs", href: "/jobs" },
   { name: "Skill Gap", href: "/skill-gap" },
   { name: "Career Readiness", href: "/career-readiness" },
   { name: "Learning Roadmap", href: "/learning-roadmap" },
@@ -49,6 +50,13 @@ function NavIcon({ name, active = false }: { name: string; active?: boolean }) {
           <path d="M7 4.5h6l4 4V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z" />
           <path d="M13 4.5v4h4" />
           <path d="M8.5 12.5h7M8.5 15.5h7" />
+        </svg>
+      );
+    case "Jobs":
+      return (
+        <svg {...sharedProps}>
+          <rect x="4" y="7" width="16" height="12" rx="2" />
+          <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M4 11h16M10 11v2h4v-2" />
         </svg>
       );
     case "Skill Gap":
