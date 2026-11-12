@@ -1,0 +1,17 @@
+digraph SkillGraph {
+  rankdir="LR";
+  node [shape="box", style="rounded"];
+  "SK001" [label="Python"];
+  "SK002" [label="Machine Learning"];
+  "SK003" [label="NumPy"];
+  "SK004" [label="Pandas"];
+  "SK005" [label="Scikit-learn"];
+  "SK006" [label="SQL"];
+  "SK007" [label="Git"];
+  "SK008" [label="REST APIs"];
+  "SK009" [label="Data Analysis"];
+  "SK002" -> "SK001" [label="requires"];
+  "SK002" -> "SK005" [label="related-to"];
+  "SK001" -> "SK003" [label="related-to"];
+  "SK001" -> "SK004" [label="related-to"];
+}

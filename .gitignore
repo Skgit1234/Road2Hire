@@ -245,3 +245,6 @@ Tests/AI/*_Resume*.pdf
 Tests/AI/* - Resume.pdf
 test_resume_pipeline.py
 
+#Tests and temp downloads
+/Backend/temp_download/
+/Backend/uploads/

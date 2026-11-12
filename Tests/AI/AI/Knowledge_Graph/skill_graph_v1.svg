@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" viewBox="0 0 1100 700">
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="550" y="42" text-anchor="middle" font-size="25" font-family="Arial" font-weight="bold" fill="#172554">Road2Hire Skill Knowledge Graph V1</text>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#475569"/></marker></defs>
+<line x1="550" y1="150" x2="180" y2="150" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="365.0" y="140.0" text-anchor="middle" font-family="Arial" font-size="14" fill="#9a3412">requires</text>
+<line x1="550" y1="150" x2="550" y2="340" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="550.0" y="235.0" text-anchor="middle" font-family="Arial" font-size="14" fill="#9a3412">related-to</text>
+<line x1="180" y1="150" x2="920" y2="150" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="550.0" y="140.0" text-anchor="middle" font-family="Arial" font-size="14" fill="#9a3412">related-to</text>
+<line x1="180" y1="150" x2="180" y2="340" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="180.0" y="235.0" text-anchor="middle" font-family="Arial" font-size="14" fill="#9a3412">related-to</text>
+<rect x="80" y="120" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="180" y="155" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Python</text>
+<rect x="450" y="120" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="550" y="155" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Machine Learning</text>
+<rect x="820" y="120" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="920" y="155" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">NumPy</text>
+<rect x="80" y="310" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="180" y="345" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Pandas</text>
+<rect x="450" y="310" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="550" y="345" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Scikit-learn</text>
+<rect x="820" y="310" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="920" y="345" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">SQL</text>
+<rect x="80" y="500" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="180" y="535" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Git</text>
+<rect x="450" y="500" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="550" y="535" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">REST APIs</text>
+<rect x="820" y="500" width="200" height="60" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+<text x="920" y="535" text-anchor="middle" font-family="Arial" font-size="16" fill="#1e3a8a">Data Analysis</text>
+<text x="30" y="675" font-family="Arial" font-size="13" fill="#475569">Arrows show relationship direction. All nodes and edges come from skill_graph_v1.json.</text>
+</svg>
