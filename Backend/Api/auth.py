@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from Core.database import get_db
@@ -25,8 +26,21 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     )
 
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    try:
+        db.commit()
+        db.refresh(new_user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Email already registered",
+        ) from None
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not register user",
+        ) from None
 
     return new_user
 
@@ -39,11 +53,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    token = create_access_token({"sub": db_user.email})
+    token = create_access_token({"sub": str(db_user.id)})
 
     return {
         "access_token": token,
         "token_type": "bearer"
     }
-
-

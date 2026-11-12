@@ -755,4 +755,3 @@ def build_personalized_graph(
         esco_graph=esco_graph,
         gap_report=gap_report,
     )
-

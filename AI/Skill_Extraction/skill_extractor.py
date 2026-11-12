@@ -70,64 +70,74 @@ class SkillMatcher:
                     curr["__skills__"].append(canonical_name)
 
     def find_in_text(self, text: str) -> dict[str, list[dict[str, Any]]]:
-        """Find whole-phrase occurrences of all registered skills in text.
+        """Find whole-phrase skill matches and retain original text offsets."""
+        folded_chars: list[str] = []
+        folded_end_offsets: list[int | None] = []
+        folded_positions_by_original: list[int] = []
+        for original_index, character in enumerate(text):
+            folded = character.casefold()
+            folded_positions_by_original.append(len(folded_chars))
+            for folded_index, folded_character in enumerate(folded):
+                folded_chars.append(folded_character)
+                folded_end_offsets.append(
+                    original_index + 1 if folded_index == len(folded) - 1 else None
+                )
 
-        Returns
-        -------
-        dict mapping canonical_name to list of occurrence dicts:
-            [{'text': match_text, 'start': start_idx, 'end': end_idx}, ...]
-        """
-        n = len(text)
-        lower = text.casefold()
         matches: dict[str, list[dict[str, Any]]] = {}
-
-        for start in range(n):
-            # Left boundary check: (?<!\w)
+        for start in range(len(text)):
             if start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
                 continue
 
-            curr = self.trie
-            for end in range(start, n):
-                ch = lower[end]
-                if ch not in curr:
+            folded_start = folded_positions_by_original[start]
+            node = self.trie
+            for folded_index in range(folded_start, len(folded_chars)):
+                node = node.get(folded_chars[folded_index])
+                if node is None:
                     break
-                curr = curr[ch]
-
-                if "__skills__" in curr:
-                    # Right boundary check: (?!\w)
-                    if end + 1 < n and (text[end + 1].isalnum() or text[end + 1] == "_"):
-                        continue
-                    m_text = text[start : end + 1]
-                    for canon in curr["__skills__"]:
-                        matches.setdefault(canon, []).append(
-                            {"text": m_text, "start": start, "end": end + 1}
-                        )
-
+                original_end = folded_end_offsets[folded_index]
+                if "__skills__" not in node or original_end is None:
+                    continue
+                if original_end < len(text) and (text[original_end].isalnum() or text[original_end] == "_"):
+                    continue
+                occurrence = {
+                    "text": text[start:original_end],
+                    "start": start,
+                    "end": original_end,
+                }
+                for canonical_name in node["__skills__"]:
+                    matches.setdefault(canonical_name, []).append(occurrence.copy())
         return matches
 
 
-_MATCHER_CACHE: dict[Any, SkillMatcher] = {}
-
-
-def _get_vocab_cache_key(vocabulary: list[str]) -> Any:
-    """Generate a cache key for vocabulary lists."""
-    if len(vocabulary) > 500:
-        return (len(vocabulary), vocabulary[0], vocabulary[len(vocabulary) // 2], vocabulary[-1])
-    return id(vocabulary)
+_MATCHER_CACHE: dict[
+    tuple[tuple[str, ...], tuple[tuple[str, str], ...]],
+    SkillMatcher,
+] = {}
 
 
 def get_skill_matcher(
     vocabulary: list[str],
     synonyms: dict[str, str] | None = None,
 ) -> SkillMatcher:
-    """Retrieve or build a cached SkillMatcher instance."""
-    key = _get_vocab_cache_key(vocabulary)
-    matcher = _MATCHER_CACHE.get(key)
+    """Cache matchers by complete vocabulary and synonym contents."""
+    valid_vocabulary = tuple(
+        name.strip()
+        for name in vocabulary
+        if isinstance(name, str) and name.strip()
+    )
+    synonym_map = synonyms if synonyms is not None else SKILL_SYNONYMS
+    synonym_key = tuple(sorted(
+        (alias.casefold(), canonical)
+        for alias, canonical in synonym_map.items()
+        if isinstance(alias, str) and isinstance(canonical, str)
+    ))
+    cache_key = (valid_vocabulary, synonym_key)
+    matcher = _MATCHER_CACHE.get(cache_key)
     if matcher is None:
-        matcher = SkillMatcher(vocabulary, synonyms=synonyms)
-        if len(_MATCHER_CACHE) > 16:
+        matcher = SkillMatcher(list(valid_vocabulary), synonyms=synonym_map)
+        if len(_MATCHER_CACHE) >= 16:
             _MATCHER_CACHE.clear()
-        _MATCHER_CACHE[key] = matcher
+        _MATCHER_CACHE[cache_key] = matcher
     return matcher
 
 

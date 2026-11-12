@@ -658,4 +658,3 @@ def get_skill_gap_detector() -> SkillGapDetector:
     if _detector_singleton is None:
         _detector_singleton = SkillGapDetector()
     return _detector_singleton
-

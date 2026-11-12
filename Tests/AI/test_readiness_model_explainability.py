@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 
 from AI.Readiness_Model.feature_extractor import get_feature_names
+from AI.Readiness_Model.dataset_loader import load_readiness_shap_background
 from AI.Readiness_Model.model_trainer import (
     SAVED_MODELS_DIR,
     load_persisted_model,
@@ -82,6 +83,24 @@ class TestReadinessModelExplainer:
         assert explainer.feature_names == EXPECTED_FEATURES
         assert explainer.feature_names == get_feature_names()
         assert explainer.explainer_type == "LinearExplainer"
+
+    def test_shap_background_excludes_unreviewed_and_unlabeled_records(
+        self, explainer: ReadinessModelExplainer
+    ):
+        background = load_readiness_shap_background()
+
+        assert len(background) == 19
+        assert explainer.X_bg_scaled.shape == (19, 9)
+        assert all(
+            set(record) == {
+                "target_occupation_title",
+                "skills_text",
+                "experience_text",
+                "projects_text",
+                "education_text",
+            }
+            for record in background
+        )
 
     def test_shap_values_dimensions_and_finite(self, explainer: ReadinessModelExplainer):
         """SHAP values must have shape (N, 9, 3) and be finite numbers."""
@@ -230,6 +249,7 @@ class TestReadinessModelExplainer:
         """Global feature importance must compute valid rankings and persist files."""
         global_info = explainer.compute_global_importance()
 
+        assert global_info["sample_count"] == 19
         assert "overall_feature_importance" in global_info
         assert len(global_info["overall_feature_importance"]) == 9
         assert "class_specific_importance" in global_info
@@ -251,4 +271,5 @@ class TestReadinessModelExplainer:
         assert "candidate_id" not in json_content
         assert "pair_id" not in json_content
         assert "annotation_id" not in json_content
+        assert json.loads(json_content)["sample_count"] == 19
 

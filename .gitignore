@@ -12,6 +12,8 @@ Python Environments
 ==========================
 
 .venv/
+Backend/.venv-contract-tests/
+Backend/.venv-contract-tests/
 venv/
 env/
 ENV/
@@ -42,6 +44,10 @@ eggs/
 .eggs/
 lib/
 lib64/
+!Frontend/lib/
+!Frontend/lib/**
+!Frontend/lib/
+!Frontend/lib/**
 parts/
 sdist/
 wheels/
@@ -215,33 +221,9 @@ Documentation
 
 Docs/*
 !Docs/.gitkeep
-!Docs/System Architecture Diagram.png
-!Docs/01_AI_ML_Architecture_and_Pipeline.md
-!Docs/02_AI_ML_Research_and_Taxonomy.md
-!Docs/03_AI_ML_Algorithms_and_Methodology.md
-!Docs/04_AI_ML_Model_Evaluation_and_Limitations.md
-!Docs/05_AI_ML_Output_and_Integration_Contract.md
-!Docs/06_AI_ML_Database_Storage_Specification.md
-!Docs/07_AI_ML_Final_Handover.md
-!Docs/Archive/
-!Docs/Archive/**
+!Docs/Skill_Taxonomy_Strategy.md
+!Docs/ESCO_ONET_Mapping_Strategy.md
+!Docs/Annotation_Strategy.md
 
-# Excluded dumps
-project_inventory.txt
-Datasets/*.json
-Datasets/*.jsonl
-Datasets/*.xlsx
-
-# External and Large Processed Datasets
-Datasets/External/
-Datasets/Processed/External_Job_Resume_Matching/
-Datasets/Processed/*.xlsx
-
-# Pipeline Outputs & Candidate Reports
-Outputs/
-
-# Personal test resumes & scratch scripts
-Tests/AI/*_Resume*.pdf
-Tests/AI/* - Resume.pdf
-test_resume_pipeline.py
-
+# Runtime resume uploads
+Backend/uploads/

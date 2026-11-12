@@ -89,7 +89,7 @@ def map_skills_to_complete_esco(
     extracted_skills: list[dict[str, Any]],
     taxonomy: Any = None,
 ) -> list[dict[str, Any]]:
-    """Enrich extracted skills using the complete available ESCO taxonomy vocabulary."""
+    """Enrich extracted skills using the complete ESCO taxonomy."""
     from AI.Skill_Extraction.esco_taxonomy import get_esco_taxonomy
 
     tax = taxonomy if taxonomy is not None else get_esco_taxonomy()
@@ -103,9 +103,16 @@ def map_skills_to_complete_esco(
         if not isinstance(skill_name, str) or not skill_name.strip():
             continue
 
-        skill_obj = tax.find_skill(skill_name.strip())
+        skill_name = skill_name.strip()
+        skill_obj = tax.find_skill(skill_name)
 
         if skill_obj:
+            preferred_match = tax.get_skill_by_preferred_label(skill_name)
+            is_preferred = (
+                preferred_match is not None
+                and preferred_match.concept_uri == skill_obj.concept_uri
+            )
+
             results.append({
                 **item,
                 "ESCO_Skill_Id": skill_obj.concept_uri,
@@ -113,9 +120,7 @@ def map_skills_to_complete_esco(
                 "ESCO_Skill_Type": skill_obj.skill_type,
                 "ESCO_Reuse_Level": skill_obj.reuse_level,
                 "ESCO_Mapping_Type": (
-                    "exact_preferred"
-                    if skill_name.strip().casefold()
-                    == skill_obj.preferred_label.casefold()
+                    "exact_preferred" if is_preferred
                     else "alternative_label"
                 ),
             })

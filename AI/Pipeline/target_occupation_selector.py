@@ -243,4 +243,3 @@ class TargetOccupationSelector:
 
         # Fallback to string query resolution
         return self._resolve_explicit_query(choice, ranked_matches)
-

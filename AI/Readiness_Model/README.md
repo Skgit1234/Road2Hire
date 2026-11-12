@@ -168,4 +168,6 @@ print(f"Top Positive Factors: {explanation['explanation']['top_positive_factors'
 - `AI/Readiness_Model/saved_models/global_shap_importance.json`: Machine-readable global feature importance and class-specific signed contributions.
 - `AI/Readiness_Model/shap_explainability_report.md`: Markdown summary of global feature rankings, directional dynamics, and governance guidelines.
 
+The SHAP background is loaded separately from the training dataset and includes only rows marked `Reviewed` or `Verified` with a valid readiness label. Draft, disputed, flagged, and unlabeled rows are excluded. This filtering changes the explanation background and global-importance population only; it does not retrain the persisted model or alter predictions. The current saved model metadata reports 71 training rows, while only 19 workbook rows meet the reviewer-status rule. Its historical training loader did not filter reviewer status, so SHAP explains the existing exploratory model and does not certify the reliability of its training labels.
+
 

@@ -5,14 +5,14 @@ import path from "node:path";
 
 const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const serverPort = process.env.PLAYWRIGHT_PORT ?? "3100";
-const serverUrl = `http://127.0.0.1:${serverPort}`;
+let serverUrl = `http://127.0.0.1:${serverPort}`;
 
 let server;
 let stopping = false;
 
-async function isServerReady() {
+async function isServerReady(url) {
   try {
-    const response = await fetch(serverUrl);
+    const response = await fetch(url);
     return response.status < 500;
   } catch {
     return false;
@@ -38,11 +38,29 @@ async function waitForServer() {
       throw new Error(`Next server exited before ${serverUrl} was ready.`);
     }
 
-    if (await isServerReady()) return;
+    if (await isServerReady(serverUrl)) return;
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   throw new Error(`Timed out waiting for ${serverUrl}.`);
+}
+
+async function startOrReuseServer() {
+  if (await isServerReady(serverUrl)) return;
+
+  // Next dev uses one .next development lock per project. Reuse the project's
+  // conventional local server when it is already running instead of trying to
+  // launch a second dev server that will exit on that lock.
+  if (!process.env.PLAYWRIGHT_PORT) {
+    const conventionalServerUrl = "http://localhost:3000";
+    if (await isServerReady(conventionalServerUrl)) {
+      serverUrl = conventionalServerUrl;
+      return;
+    }
+  }
+
+  startServer();
+  await waitForServer();
 }
 
 function runPlaywright() {
@@ -85,8 +103,7 @@ async function stopServer() {
 }
 
 try {
-  startServer();
-  await waitForServer();
+  await startOrReuseServer();
   process.exitCode = await runPlaywright();
 } catch (error) {
   console.error(error);

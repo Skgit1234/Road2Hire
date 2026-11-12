@@ -60,4 +60,3 @@ class SkillGapReport(TypedDict, total=False):
     surplus_candidate_skills: list[str]
     matching_summary: dict[str, int]
     disclaimer: str
-

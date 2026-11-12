@@ -511,4 +511,3 @@ def get_road2hire_model(
             if _model_singleton is None:
                 _model_singleton = Road2HireModel(top_n_occupations=top_n_occupations)
     return _model_singleton
-

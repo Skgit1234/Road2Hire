@@ -3,11 +3,11 @@
 **Milestone:** Phase 4 — Finalize AI/ML Output JSON Schema & Backend Contract  
 **Status:** Complete  
 **Date:** November 2026  
-**JSON Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json)  
-**JSON Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json)  
-**Contract Documentation:** [`Docs/Archive/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Output_Contract.md)
-**Handover Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
-**Schema Test Suite:** [`Tests/AI/test_pipeline_schema_contract.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Tests/AI/test_pipeline_schema_contract.py)  
+**JSON Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](AI/Pipeline/schemas/pipeline_output.schema.json)  
+**JSON Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](AI/Pipeline/schemas/pipeline_error.schema.json)  
+**Contract Documentation:** `Docs/Archive/AI_ML_Output_Contract.md`
+**Handover Guide:** `Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`
+**Schema Test Suite:** `Tests/AI/test_pipeline_schema_contract.py`  
 
 ---
 
@@ -23,7 +23,7 @@ The complete AI test suite (344 tests) passed with 100% success.
 
 ## 2. Standardized JSON Output Contract (10 Logical Sections)
 
-Conforming to [`AI/Pipeline/schemas/pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json):
+Conforming to [`AI/Pipeline/schemas/pipeline_output.schema.json`](AI/Pipeline/schemas/pipeline_output.schema.json):
 
 1. **`metadata`**: Schema and pipeline versions, overall execution status (`success`, `warning`, `error`), ISO-8601 timestamp, source document path, page count, extraction status, and stage-by-stage execution durations.
 2. **`candidate_profile`**: Structured candidate profile conforming to Schema v1.1.0 (`candidate`, `education`, `experience`, `projects`, `certifications`).
@@ -42,9 +42,9 @@ In addition, top-level arrays `warnings` and `errors` capture diagnostic notices
 
 ## 3. Standardized Error Contract
 
-Conforming to [`AI/Pipeline/schemas/pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json):
+Conforming to [`AI/Pipeline/schemas/pipeline_error.schema.json`](AI/Pipeline/schemas/pipeline_error.schema.json):
 
-Structured error responses are generated via [`create_error_response()`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py):
+Structured error responses are generated via [`create_error_response()`](AI/Pipeline/pipeline_schema.py):
 
 | Error Code | Stage | Description | Recoverable |
 |:---|:---|:---|:---:|
@@ -64,7 +64,7 @@ Structured error responses are generated via [`create_error_response()`](file://
 
 ## 4. Pipeline Schema Enhancements
 
-In [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py):
+In [`AI/Pipeline/pipeline_schema.py`](AI/Pipeline/pipeline_schema.py):
 1. **`to_canonical_dict()`:** Returns strictly the 10-section canonical output contract.
 2. **`to_dict(canonical=False)`:** Default mode returns a merged dictionary with both canonical logical sections and legacy top-level keys for 100% backward compatibility with existing tests and CLI scripts.
 3. **`to_json(indent=2, canonical=False)`:** Formats either canonical or backward-compatible dictionaries to JSON strings.
@@ -89,18 +89,17 @@ In [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Ro
 - **Passed:** **344 passed**
 - **Failed:** 0
 - **Pass Rate:** **100.0%**
-- **New Schema Validation Tests:** 21 tests in [`Tests/AI/test_pipeline_schema_contract.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Tests/AI/test_pipeline_schema_contract.py) passing.
+- **New Schema Validation Tests:** 21 tests in `Tests/AI/test_pipeline_schema_contract.py` passing.
 
 ---
 
 ## 7. Deliverables & Created Files
 
-1. **Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_output.schema.json)
-2. **Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/pipeline_error.schema.json)
-3. **Schema Architecture Guide:** [`AI/Pipeline/schemas/README.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/schemas/README.md)
-4. **Contract Documentation & Examples:** [`Docs/Archive/AI_ML_Output_Contract.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Output_Contract.md)
-5. **Backend Handover Guide:** [`Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Docs/Archive/AI_ML_Pipeline_Integration_Guide.md)
-6. **Schema Validation Tests:** [`Tests/AI/test_pipeline_schema_contract.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/Tests/AI/test_pipeline_schema_contract.py)
-7. **Pipeline Schema Implementation:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)
-8. **Phase 4 Completion Report:** [`AI/Pipeline/phase4_contract_report.md`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/phase4_contract_report.md)
-
+1. **Output Schema:** [`AI/Pipeline/schemas/pipeline_output.schema.json`](AI/Pipeline/schemas/pipeline_output.schema.json)
+2. **Error Schema:** [`AI/Pipeline/schemas/pipeline_error.schema.json`](AI/Pipeline/schemas/pipeline_error.schema.json)
+3. **Schema Architecture Guide:** [`AI/Pipeline/schemas/README.md`](AI/Pipeline/schemas/README.md)
+4. **Contract Documentation & Examples:** `Docs/Archive/AI_ML_Output_Contract.md`
+5. **Backend Handover Guide:** `Docs/Archive/AI_ML_Pipeline_Integration_Guide.md`
+6. **Schema Validation Tests:** `Tests/AI/test_pipeline_schema_contract.py`
+7. **Pipeline Schema Implementation:** [`AI/Pipeline/pipeline_schema.py`](AI/Pipeline/pipeline_schema.py)
+8. **Phase 4 Completion Report:** [`AI/Pipeline/phase4_contract_report.md`](AI/Pipeline/phase4_contract_report.md)

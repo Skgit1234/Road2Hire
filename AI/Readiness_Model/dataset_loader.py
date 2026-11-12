@@ -25,6 +25,34 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_XLSX_PATH = PROJECT_ROOT / "Datasets" / "Processed" / "readiness_annotation.xlsx"
 
 VALID_CLASSES = {"Not Ready", "Developing", "Job Ready"}
+VALID_REVIEWER_STATUSES = {
+    "Draft",
+    "Reviewed",
+    "Verified",
+    "Disputed",
+    "Flagged_Insufficient_Evidence",
+}
+SHAP_BACKGROUND_STATUSES = {"Reviewed", "Verified"}
+ANNOTATION_HEADERS = [
+    "annotation_id",
+    "candidate_id",
+    "target_occupation_title",
+    "target_occupation_uri",
+    "skills",
+    "experience_summary",
+    "projects_summary",
+    "education_summary",
+    "essential_skill_proficiency",
+    "work_experience_relevance",
+    "practical_application_evidence",
+    "education_relevance",
+    "readiness_label",
+    "confidence",
+    "key_evidence_summary",
+    "annotator_id",
+    "reviewer_status",
+    "annotation_notes",
+]
 
 
 @dataclass(frozen=True)
@@ -138,3 +166,64 @@ def load_readiness_dataset(
         total_rows_inspected=total_inspected,
     )
 
+
+def load_readiness_shap_background(
+    xlsx_path: Path | str = DEFAULT_XLSX_PATH,
+) -> list[dict[str, str]]:
+    """Load only reviewed/verified, labeled evidence for SHAP references.
+
+    This is deliberately separate from ``load_readiness_dataset`` so adding
+    reviewer filtering for explainability cannot silently alter the persisted
+    model's training data or prediction behavior.
+    """
+    path = Path(xlsx_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Annotation spreadsheet not found at {path}")
+
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    try:
+        if "Readiness_Annotation" not in wb.sheetnames:
+            raise ValueError("Workbook is missing the Readiness_Annotation worksheet")
+        ws = wb["Readiness_Annotation"]
+        headers = [ws.cell(row=1, column=col).value for col in range(1, 19)]
+        if ws.max_row < 2 or ws.max_column != 18 or headers != ANNOTATION_HEADERS:
+            raise ValueError("Readiness annotation workbook schema is invalid")
+
+        background: list[dict[str, str]] = []
+        for row in range(2, ws.max_row + 1):
+            status = ws.cell(row=row, column=17).value
+            status = status.strip() if isinstance(status, str) else ""
+            if status not in VALID_REVIEWER_STATUSES:
+                raise ValueError(f"Invalid reviewer status at row {row}")
+            if status not in SHAP_BACKGROUND_STATUSES:
+                continue
+
+            label = ws.cell(row=row, column=13).value
+            if not isinstance(label, str) or label.strip() not in VALID_CLASSES:
+                raise ValueError(
+                    f"Reviewed/verified row {row} must have a valid readiness label"
+                )
+
+            background.append(
+                {
+                    "target_occupation_title": str(
+                        ws.cell(row=row, column=3).value or ""
+                    ).strip(),
+                    "skills_text": str(ws.cell(row=row, column=5).value or "").strip(),
+                    "experience_text": str(
+                        ws.cell(row=row, column=6).value or ""
+                    ).strip(),
+                    "projects_text": str(
+                        ws.cell(row=row, column=7).value or ""
+                    ).strip(),
+                    "education_text": str(
+                        ws.cell(row=row, column=8).value or ""
+                    ).strip(),
+                }
+            )
+    finally:
+        wb.close()
+
+    if not background:
+        raise ValueError("No reviewed/verified labeled records are available for SHAP")
+    return background
