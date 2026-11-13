@@ -22,6 +22,7 @@ import {
   type CandidateProfile,
   type SelectedResumeMetadata,
 } from "./candidate-profile-state";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export type {
   CandidateProfile,
@@ -70,6 +71,11 @@ function createInitialProfile() {
 }
 
 export function CandidateProfileProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  return <CandidateProfileStateProvider key={session?.profile.id ?? "signed-out"}>{children}</CandidateProfileStateProvider>;
+}
+
+function CandidateProfileStateProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState(createInitialProfile);
 
   function setResumeMetadata(metadata: SelectedResumeMetadata) {

@@ -1,4 +1,5 @@
-﻿"use client";
+﻿
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -34,9 +35,13 @@ const statusStyle: Record<LearningTaskStatus, string> = {
 };
 
 function isValidationError(message: string) {
-  return message.startsWith("The API returned an invalid ") ||
+  return (
+    message.startsWith("The API returned an invalid ") ||
+    message.startsWith("Provide both a task status and progress") ||
     message.startsWith("Task progress must be") ||
-    message.startsWith("Invalid learning task status");
+    message.startsWith("Task status and progress are inconsistent") ||
+    message.startsWith("Invalid learning task status")
+  );
 }
 
 function getProgressDrafts(
@@ -56,11 +61,13 @@ function getProgressDrafts(
 }
 
 function getResourceLabel(resource: Record<string, string>, index: number) {
-  return resource.name ??
+  return (
+    resource.name ??
     resource.category ??
     resource.type ??
     resource.title ??
-    `Resource category ${index + 1}`;
+    `Resource category ${index + 1}`
+  );
 }
 
 export default function LearningRoadmapPage() {
@@ -105,9 +112,10 @@ export default function LearningRoadmapPage() {
           return;
         }
 
-        const message = requestError instanceof Error
-          ? requestError.message
-          : "Could not load your learning roadmap.";
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : "Could not load your learning roadmap.";
 
         if (isValidationError(message)) {
           setValidationError(message);
@@ -169,9 +177,10 @@ export default function LearningRoadmapPage() {
       setRoadmap(refreshed);
       setProgressDrafts(getProgressDrafts(refreshed));
     } catch (requestError) {
-      const message = requestError instanceof Error
-        ? requestError.message
-        : "Could not update task progress.";
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not update task progress.";
 
       if (isValidationError(message)) {
         setValidationError(message);
@@ -225,7 +234,7 @@ export default function LearningRoadmapPage() {
             className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
             role="status"
           >
-            Restoring your session…
+            Restoring your session
           </section>
         ) : !session ? (
           <section
@@ -424,7 +433,7 @@ export default function LearningRoadmapPage() {
                                       <p className="mt-1 text-xs text-slate-500">
                                         Task ID {item.task_id}
                                         {item.priority
-                                          ? ` · Priority: ${item.priority}`
+                                          ? `   Priority: ${item.priority}`
                                           : ""}
                                       </p>
                                     </div>

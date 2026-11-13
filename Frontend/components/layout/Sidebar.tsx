@@ -312,7 +312,9 @@ export default function Sidebar() {
           <div className="border-t border-white/10 p-3">
             <div className="flex items-center gap-3 rounded-xl bg-slate-800/70 p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-sm font-semibold text-white">
-                A
+                <span role="img" aria-label={`Account avatar: ${session?.profile.name ?? "Guest"}`}>
+                  {session?.profile.name.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "G"}
+                </span>
               </div>
 
               <div className="min-w-0 flex-1">

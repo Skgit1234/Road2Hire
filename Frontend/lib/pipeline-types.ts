@@ -163,6 +163,6 @@ export type PipelineLearningTaskResponse = {
 };
 
 export type TaskProgressUpdate = {
-  status?: LearningTaskStatus;
-  progress?: number;
+  status: LearningTaskStatus;
+  progress: number;
 };

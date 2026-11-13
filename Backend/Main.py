@@ -25,6 +25,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://localhost:3158",
+        "http://127.0.0.1:3158",
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
