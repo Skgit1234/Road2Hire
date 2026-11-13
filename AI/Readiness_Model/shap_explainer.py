@@ -29,7 +29,7 @@ import numpy as np
 import shap
 from sklearn.pipeline import Pipeline
 
-from .dataset_loader import load_readiness_dataset
+from .dataset_loader import load_readiness_shap_background
 from .feature_extractor import ReadinessFeatureExtractor, get_feature_names
 from .model_trainer import (
     DEFAULT_RANDOM_STATE,
@@ -83,8 +83,7 @@ class ReadinessModelExplainer:
 
         # Compute or load background data in scaled feature space
         if background_data is None:
-            ds = load_readiness_dataset()
-            raw_bg = ds.raw_evidence
+            raw_bg = load_readiness_shap_background()
         else:
             raw_bg = background_data
 
@@ -326,8 +325,7 @@ class ReadinessModelExplainer:
     ) -> dict[str, Any]:
         """Compute global feature importance across all candidate records."""
         if dataset_records is None:
-            ds = load_readiness_dataset()
-            raw_data = ds.raw_evidence
+            raw_data = load_readiness_shap_background()
         else:
             raw_data = dataset_records
 
@@ -399,9 +397,9 @@ class ReadinessModelExplainer:
         md_lines = [
             "# Road2Hire — M4.5 SHAP Global Feature Explainability Report",
             "",
-            f"**Model Architecture:** `{type(self.classifier).__name__}` (`{self.explainer_type}`)  ",
-            f"**Population Evaluated:** $N = {global_info['sample_count']}$ verified candidate records  ",
-            f"**Target Classes:** `{global_info['classes']}`  ",
+            f"**Model Architecture:** `{type(self.classifier).__name__}` (`{self.explainer_type}`)",
+            f"**SHAP Background Population:** $N = {global_info['sample_count']}$ Reviewed/Verified labeled records",
+            f"**Target Classes:** `{global_info['classes']}`",
             "",
             "---",
             "",
@@ -448,10 +446,9 @@ class ReadinessModelExplainer:
             "",
             "## 3. Methodological Interpretation & Governance",
             "",
-            "1. **Dominant Signal (Technical Skills & Degree Level):** Across all classes, `skills_count` and `edu_level_ordinal` serve as the primary macro anchors for readiness classification.",
-            "2. **Job Ready Drivers:** `skills_count` (+1.264) and `exp_positions_count` (+0.472) provide the strongest positive directional lift toward `Job Ready`.",
-            "3. **Not Ready Drivers:** A low `skills_count` is the overwhelming driver (+1.356) pushing candidates into `Not Ready`.",
-            "4. **No Causal Claim:** SHAP values explain internal model weight allocations and must not be communicated to candidates as certified real-world qualifications.",
+            "1. **Eligible reference population:** Global values use only records marked Reviewed or Verified with a valid readiness label. Draft, disputed, flagged, and unlabeled records are excluded.",
+            "2. **Exploratory model provenance:** The persisted model was trained on 71 labeled pilot records without reviewer-status filtering. These explanations describe that existing model and do not validate its training labels.",
+            "3. **No Causal Claim:** SHAP values explain internal model weight allocations and must not be communicated to candidates as certified real-world qualifications.",
             "",
         ])
 
@@ -470,4 +467,3 @@ class ReadinessModelExplainer:
             except Exception as exc:
                 logger.warning("Could not load global SHAP artifact: %s", exc)
         return {}
-

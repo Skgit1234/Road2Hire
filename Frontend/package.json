@@ -7,11 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test tests/profile-state.test.mjs",
+    "test": "node --experimental-strip-types --test tests/profile-state.test.mjs tests/health-check.test.mjs tests/auth-api.test.mjs tests/resume-api.test.mjs tests/jobs-api.test.mjs tests/skill-gap-api.test.mjs tests/career-readiness-api.test.mjs tests/learning-roadmap-api.test.mjs tests/dashboard-api.test.mjs tests/dashboard-visualization.test.mjs tests/pipeline-api.test.mjs",
     "test:e2e": "node tests/e2e/run-playwright.mjs"
   },
   "dependencies": {
-    "next": "16.3.4",
+    "next": "16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -22,7 +22,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

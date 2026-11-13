@@ -2,9 +2,9 @@
 
 **Pipeline Version:** `3.0.0`  
 **Package:** `AI/Pipeline/`  
-**Central Entry Point:** `Road2HirePipeline` in [`AI/Pipeline/pipeline.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline.py)  
-**Schema Contract:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)  
-**CLI Tool:** [`AI/Pipeline/cli.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/cli.py)  
+**Central Entry Point:** `Road2HirePipeline` in [`AI/Pipeline/pipeline.py`](AI/Pipeline/pipeline.py)  
+**Schema Contract:** [`AI/Pipeline/pipeline_schema.py`](AI/Pipeline/pipeline_schema.py)  
+**CLI Tool:** [`AI/Pipeline/cli.py`](AI/Pipeline/cli.py)  
 
 ---
 
@@ -52,12 +52,12 @@ Resume PDF
 
 | Module | Description | Primary Classes / Functions |
 |:---|:---|:---|
-| [`pipeline.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline.py) | Central orchestrator connecting all AI modules | `Road2HirePipeline`, `ResumeValidationError` |
-| [`pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py) | Stable dataclasses and JSON serialization contracts | `UnifiedPipelineResult`, `SelectedOccupation`, `ReadinessPredictionData`, `SHAPExplanationData`, `LearningRoadmap` |
-| [`target_occupation_selector.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/target_occupation_selector.py) | Resolves target occupations from query or ranked matches | `TargetOccupationSelector`, `OccupationSelectionError` |
-| [`roadmap_generator.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/roadmap_generator.py) | Generates prioritized 4-phase learning milestones | `RoadmapGenerator`, `RoadmapPhase`, `RoadmapItem` |
-| [`report_generator.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/report_generator.py) | Renders comprehensive Markdown and JSON reports | `ReportGenerator` |
-| [`cli.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/cli.py) | Clean command-line interface with logging suppression | `main()`, `print_summary()` |
+| [`pipeline.py`](AI/Pipeline/pipeline.py) | Central orchestrator connecting all AI modules | `Road2HirePipeline`, `ResumeValidationError` |
+| [`pipeline_schema.py`](AI/Pipeline/pipeline_schema.py) | Stable dataclasses and JSON serialization contracts | `UnifiedPipelineResult`, `SelectedOccupation`, `ReadinessPredictionData`, `SHAPExplanationData`, `LearningRoadmap` |
+| [`target_occupation_selector.py`](AI/Pipeline/target_occupation_selector.py) | Resolves target occupations from query or ranked matches | `TargetOccupationSelector`, `OccupationSelectionError` |
+| [`roadmap_generator.py`](AI/Pipeline/roadmap_generator.py) | Generates prioritized 4-phase learning milestones | `RoadmapGenerator`, `RoadmapPhase`, `RoadmapItem` |
+| [`report_generator.py`](AI/Pipeline/report_generator.py) | Renders comprehensive Markdown and JSON reports | `ReportGenerator` |
+| [`cli.py`](AI/Pipeline/cli.py) | Clean command-line interface with logging suppression | `main()`, `print_summary()` |
 
 ---
 
@@ -159,4 +159,3 @@ python -m AI.Pipeline.cli Tests/AI/sample_resume.pdf --interactive
 # Specify custom output directory and format
 python -m AI.Pipeline.cli Tests/AI/sample_resume.pdf --occupation "software developer" --output-dir "MyReports" --format markdown
 ```
-

@@ -109,4 +109,3 @@ def compute_gap_scores(
         "overall_skill_coverage_score": round(overall_score, 4),
         "scoring_weights": effective_weights,
     }
-

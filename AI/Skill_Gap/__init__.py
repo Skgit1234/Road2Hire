@@ -27,4 +27,3 @@ __all__ = [
     "DEFAULT_ESSENTIAL_WEIGHT",
     "DEFAULT_OPTIONAL_WEIGHT",
 ]
-

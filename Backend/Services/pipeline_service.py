@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -19,11 +20,13 @@ from AI.Pipeline import (  # noqa: E402
     process_resume,
 )
 from Core.database import SessionLocal  # noqa: E402
+from Models.learning_task import LearningTask  # noqa: E402
 from Models.pipeline_run import PipelineRun  # noqa: E402
 from Models.resume import Resume  # noqa: E402
 from Models.skill_gap import SkillGap  # noqa: E402
 from Models.user import User  # noqa: E402
 from Services.file_service import UPLOAD_DIRECTORY  # noqa: E402
+from Services.roadmap_utils import logical_item_key  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -200,6 +203,7 @@ def _persist_success(
         _populate_run_summary(run, canonical_output)
 
         _add_skill_gap_summary(session, run, canonical_output)
+        _add_learning_tasks(session, run.id, canonical_output)
         session.flush()
 
         run.status = "completed"
@@ -330,6 +334,87 @@ def _add_skill_gap_summary(
             missing_optional_skill_count=counts[2],
         )
     )
+
+
+def _add_learning_tasks(
+    session: Session,
+    run_id: int,
+    canonical_output: dict[str, Any],
+) -> None:
+    roadmap = _mapping(canonical_output.get("learning_roadmap"))
+    phases = roadmap.get("phases")
+    if phases is None:
+        return
+    if not isinstance(phases, list):
+        raise ValueError("Pipeline returned an invalid learning roadmap.")
+
+    rows = []
+    for phase in phases:
+        if not isinstance(phase, dict):
+            raise ValueError("Pipeline returned an invalid roadmap phase.")
+
+        phase_number = phase.get("phase_number")
+        phase_name = phase.get("phase_name")
+        items = phase.get("items")
+
+        if (
+            isinstance(phase_number, bool)
+            or not isinstance(phase_number, int)
+            or not 1 <= phase_number <= 4
+            or not isinstance(phase_name, str)
+            or not phase_name.strip()
+            or len(phase_name) > 120
+            or not isinstance(items, list)
+        ):
+            raise ValueError("Pipeline returned an invalid roadmap phase.")
+
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("Pipeline returned an invalid roadmap item.")
+
+            skill_name = item.get("skill_name") or item.get("skill_label")
+            skill_uri = (
+                item.get("esco_uri")
+                or item.get("skill_uri")
+                or item.get("canonical_uri")
+            )
+            priority = item.get("priority")
+
+            if (
+                not isinstance(skill_name, str)
+                or not skill_name.strip()
+                or skill_uri is not None and not isinstance(skill_uri, str)
+                or len(skill_name.strip()) > 255
+                or skill_uri is not None and len(skill_uri) > 512
+                or isinstance(priority, str) and len(priority) > 20
+                or isinstance(phase_name, str) and len(phase_name) > 120
+            ):
+                raise ValueError("Pipeline returned an invalid roadmap item.")
+
+            logical_key = logical_item_key(phase_number, skill_name, skill_uri)
+
+            rows.append(
+                {
+                    "pipeline_run_id": run_id,
+                    "logical_item_key": logical_key,
+                    "roadmap_phase_number": phase_number,
+                    "roadmap_phase_name": (
+                        phase_name if isinstance(phase_name, str) else None
+                    ),
+                    "skill_name": skill_name.strip(),
+                    "skill_uri": skill_uri,
+                    "priority": priority if isinstance(priority, str) else None,
+                    "roadmap_item_data": item,
+                }
+            )
+
+    if rows:
+        statement = pg_insert(LearningTask).values(rows)
+        session.execute(
+            statement.on_conflict_do_nothing(
+                constraint="uq_learning_task_pipeline_run_logical_item"
+            )
+        )
 
 
 def _set_run_failure(

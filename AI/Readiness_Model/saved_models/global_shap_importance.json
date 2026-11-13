@@ -1,6 +1,6 @@
 {
   "explainer_type": "LinearExplainer",
-  "sample_count": 71,
+  "sample_count": 19,
   "classes": [
     "Developing",
     "Job Ready",
@@ -11,63 +11,63 @@
       "rank": 1,
       "feature": "skills_count",
       "display_name": "Skills Count",
-      "mean_abs_shap": 0.9038,
+      "mean_abs_shap": 0.9286,
       "description": "Number of verified technical skills normalized to canonical taxonomy"
     },
     {
       "rank": 2,
       "feature": "edu_level_ordinal",
       "display_name": "Edu Level Ordinal",
-      "mean_abs_shap": 0.6041,
+      "mean_abs_shap": 0.6122,
       "description": "Highest academic degree level (None/Secondary=0, Bachelor=1, Master/Postgraduate=2)"
     },
     {
       "rank": 3,
       "feature": "exp_positions_count",
       "display_name": "Exp Positions Count",
-      "mean_abs_shap": 0.3145,
+      "mean_abs_shap": 0.3378,
       "description": "Number of distinct professional employment roles"
     },
     {
       "rank": 4,
-      "feature": "is_stem_degree",
-      "display_name": "Is Stem Degree",
-      "mean_abs_shap": 0.2568,
-      "description": "Formal degree alignment with Computer Science, IT, or Engineering disciplines"
+      "feature": "has_production_system",
+      "display_name": "Has Production System",
+      "mean_abs_shap": 0.1535,
+      "description": "Evidence of enterprise, production, deployed, or multi-tier systems"
     },
     {
       "rank": 5,
-      "feature": "has_senior_role",
-      "display_name": "Has Senior Role",
-      "mean_abs_shap": 0.2205,
-      "description": "Presence of senior, lead, architect, or manager title in work history"
-    },
-    {
-      "rank": 6,
       "feature": "project_tech_count",
       "display_name": "Project Tech Count",
-      "mean_abs_shap": 0.1861,
+      "mean_abs_shap": 0.1411,
       "description": "Number of distinct technologies specified in project implementations"
     },
     {
+      "rank": 6,
+      "feature": "has_senior_role",
+      "display_name": "Has Senior Role",
+      "mean_abs_shap": 0.1237,
+      "description": "Presence of senior, lead, architect, or manager title in work history"
+    },
+    {
       "rank": 7,
-      "feature": "project_words",
-      "display_name": "Project Words",
-      "mean_abs_shap": 0.1608,
-      "description": "Technical depth and implementation detail in project narratives"
+      "feature": "is_stem_degree",
+      "display_name": "Is Stem Degree",
+      "mean_abs_shap": 0.0856,
+      "description": "Formal degree alignment with Computer Science, IT, or Engineering disciplines"
     },
     {
       "rank": 8,
-      "feature": "has_production_system",
-      "display_name": "Has Production System",
-      "mean_abs_shap": 0.1201,
-      "description": "Evidence of enterprise, production, deployed, or multi-tier systems"
+      "feature": "project_words",
+      "display_name": "Project Words",
+      "mean_abs_shap": 0.0799,
+      "description": "Technical depth and implementation detail in project narratives"
     },
     {
       "rank": 9,
       "feature": "project_count",
       "display_name": "Project Count",
-      "mean_abs_shap": 0.089,
+      "mean_abs_shap": 0.0519,
       "description": "Number of documented technical projects with descriptions"
     }
   ],
@@ -76,55 +76,55 @@
       {
         "rank": 1,
         "feature": "edu_level_ordinal",
-        "mean_abs_shap": 0.3881,
+        "mean_abs_shap": 0.3934,
         "mean_signed_shap": 0.0
       },
       {
         "rank": 2,
-        "feature": "is_stem_degree",
-        "mean_abs_shap": 0.3852,
-        "mean_signed_shap": 0.0
+        "feature": "exp_positions_count",
+        "mean_abs_shap": 0.2662,
+        "mean_signed_shap": -0.0
       },
       {
         "rank": 3,
-        "feature": "exp_positions_count",
-        "mean_abs_shap": 0.2479,
+        "feature": "has_production_system",
+        "mean_abs_shap": 0.2302,
         "mean_signed_shap": -0.0
       },
       {
         "rank": 4,
         "feature": "project_tech_count",
-        "mean_abs_shap": 0.2109,
-        "mean_signed_shap": -0.0
+        "mean_abs_shap": 0.1599,
+        "mean_signed_shap": 0.0
       },
       {
         "rank": 5,
-        "feature": "has_production_system",
-        "mean_abs_shap": 0.1802,
-        "mean_signed_shap": 0.0
-      },
-      {
-        "rank": 6,
-        "feature": "project_count",
-        "mean_abs_shap": 0.1335,
-        "mean_signed_shap": 0.0
-      },
-      {
-        "rank": 7,
-        "feature": "has_senior_role",
-        "mean_abs_shap": 0.1257,
+        "feature": "is_stem_degree",
+        "mean_abs_shap": 0.1284,
         "mean_signed_shap": -0.0
       },
       {
-        "rank": 8,
-        "feature": "project_words",
-        "mean_abs_shap": 0.1208,
+        "rank": 6,
+        "feature": "skills_count",
+        "mean_abs_shap": 0.0945,
+        "mean_signed_shap": -0.0
+      },
+      {
+        "rank": 7,
+        "feature": "project_count",
+        "mean_abs_shap": 0.0778,
         "mean_signed_shap": 0.0
       },
       {
+        "rank": 8,
+        "feature": "has_senior_role",
+        "mean_abs_shap": 0.0705,
+        "mean_signed_shap": -0.0
+      },
+      {
         "rank": 9,
-        "feature": "skills_count",
-        "mean_abs_shap": 0.0919,
+        "feature": "project_words",
+        "mean_abs_shap": 0.06,
         "mean_signed_shap": -0.0
       }
     ],
@@ -132,55 +132,55 @@
       {
         "rank": 1,
         "feature": "skills_count",
-        "mean_abs_shap": 1.2637,
+        "mean_abs_shap": 1.2985,
         "mean_signed_shap": -0.0
       },
       {
         "rank": 2,
         "feature": "edu_level_ordinal",
-        "mean_abs_shap": 0.518,
+        "mean_abs_shap": 0.525,
         "mean_signed_shap": 0.0
       },
       {
         "rank": 3,
         "feature": "exp_positions_count",
-        "mean_abs_shap": 0.4717,
-        "mean_signed_shap": -0.0
+        "mean_abs_shap": 0.5067,
+        "mean_signed_shap": 0.0
       },
       {
         "rank": 4,
         "feature": "has_senior_role",
-        "mean_abs_shap": 0.3308,
+        "mean_abs_shap": 0.1856,
         "mean_signed_shap": 0.0
       },
       {
         "rank": 5,
         "feature": "is_stem_degree",
-        "mean_abs_shap": 0.2788,
+        "mean_abs_shap": 0.0929,
         "mean_signed_shap": 0.0
       },
       {
         "rank": 6,
         "feature": "project_words",
-        "mean_abs_shap": 0.1203,
-        "mean_signed_shap": 0.0
+        "mean_abs_shap": 0.0598,
+        "mean_signed_shap": -0.0
       },
       {
         "rank": 7,
         "feature": "project_tech_count",
-        "mean_abs_shap": 0.0682,
-        "mean_signed_shap": -0.0
+        "mean_abs_shap": 0.0517,
+        "mean_signed_shap": 0.0
       },
       {
         "rank": 8,
         "feature": "has_production_system",
-        "mean_abs_shap": 0.0257,
-        "mean_signed_shap": -0.0
+        "mean_abs_shap": 0.0328,
+        "mean_signed_shap": 0.0
       },
       {
         "rank": 9,
         "feature": "project_count",
-        "mean_abs_shap": 0.0128,
+        "mean_abs_shap": 0.0075,
         "mean_signed_shap": -0.0
       }
     ],
@@ -188,56 +188,56 @@
       {
         "rank": 1,
         "feature": "skills_count",
-        "mean_abs_shap": 1.3557,
-        "mean_signed_shap": 0.0
+        "mean_abs_shap": 1.393,
+        "mean_signed_shap": -0.0
       },
       {
         "rank": 2,
         "feature": "edu_level_ordinal",
-        "mean_abs_shap": 0.9061,
-        "mean_signed_shap": -0.0
-      },
-      {
-        "rank": 3,
-        "feature": "project_tech_count",
-        "mean_abs_shap": 0.2792,
+        "mean_abs_shap": 0.9184,
         "mean_signed_shap": 0.0
       },
       {
+        "rank": 3,
+        "feature": "exp_positions_count",
+        "mean_abs_shap": 0.2405,
+        "mean_signed_shap": -0.0
+      },
+      {
         "rank": 4,
-        "feature": "project_words",
-        "mean_abs_shap": 0.2411,
+        "feature": "project_tech_count",
+        "mean_abs_shap": 0.2116,
         "mean_signed_shap": -0.0
       },
       {
         "rank": 5,
-        "feature": "exp_positions_count",
-        "mean_abs_shap": 0.2239,
+        "feature": "has_production_system",
+        "mean_abs_shap": 0.1974,
         "mean_signed_shap": 0.0
       },
       {
         "rank": 6,
-        "feature": "has_senior_role",
-        "mean_abs_shap": 0.2051,
-        "mean_signed_shap": -0.0
+        "feature": "project_words",
+        "mean_abs_shap": 0.1198,
+        "mean_signed_shap": 0.0
       },
       {
         "rank": 7,
-        "feature": "has_production_system",
-        "mean_abs_shap": 0.1545,
+        "feature": "has_senior_role",
+        "mean_abs_shap": 0.1151,
         "mean_signed_shap": -0.0
       },
       {
         "rank": 8,
         "feature": "project_count",
-        "mean_abs_shap": 0.1207,
+        "mean_abs_shap": 0.0704,
         "mean_signed_shap": -0.0
       },
       {
         "rank": 9,
         "feature": "is_stem_degree",
-        "mean_abs_shap": 0.1064,
-        "mean_signed_shap": -0.0
+        "mean_abs_shap": 0.0355,
+        "mean_signed_shap": 0.0
       }
     ]
   }

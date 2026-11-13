@@ -6,19 +6,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from Core.database import Base
-from Models import (
-    CandidateProfile,
-    LearningTask,
-    Job,
-    PipelineRun,
-    Resume,
-    SkillGap,
-    User,
-)
+from Core.database import Base, DATABASE_URL
+from Models import CandidateProfile, Job, LearningTask, PipelineRun, Resume, SkillGap, User
 
 config = context.config
 
+# Keep Alembic on the same environment-provided database as the application.
+database_url = os.getenv("ALEMBIC_TEST_URL") or DATABASE_URL
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -26,9 +24,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = os.getenv("ALEMBIC_TEST_URL") or config.get_main_option(
-        "sqlalchemy.url"
-    )
+    url = config.get_main_option("sqlalchemy.url")
 
     context.configure(
         url=url,
@@ -43,10 +39,6 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     section = config.get_section(config.config_ini_section, {})
-    test_url = os.getenv("ALEMBIC_TEST_URL")
-
-    if test_url:
-        section["sqlalchemy.url"] = test_url
 
     connectable = engine_from_config(
         section,

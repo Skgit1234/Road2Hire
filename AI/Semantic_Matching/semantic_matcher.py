@@ -52,7 +52,7 @@ from AI.Skill_Extraction.skill_embeddings import (
     generate_skill_embeddings,
 )
 from AI.Skill_Extraction.skill_extractor import (
-    load_skill_vocabulary,
+    load_esco_skill_vocabulary,
     normalize_skill_name,
 )
 
@@ -148,7 +148,7 @@ class SemanticSkillMatcher:
         """Lazy load curated skill vocabulary."""
         if self._vocabulary is None:
             try:
-                self._vocabulary = load_skill_vocabulary()
+                self._vocabulary = load_esco_skill_vocabulary()
             except Exception:
                 self._vocabulary = []
         return self._vocabulary

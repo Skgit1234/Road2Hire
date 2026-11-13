@@ -1,10 +1,10 @@
 # Milestone Phase 3 — End-to-End AI/ML Pipeline Architecture Audit
 
 **Status:** Completed  
-**Pipeline Module:** [`AI/Pipeline/`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline)  
-**Central Pipeline Orchestrator:** [`AI/Pipeline/pipeline.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline.py)  
+**Pipeline Module:** [`AI/Pipeline/`](AI/Pipeline)  
+**Central Pipeline Orchestrator:** [`AI/Pipeline/pipeline.py`](AI/Pipeline/pipeline.py)  
 **Public Python Interface:** `Road2HirePipeline.run(resume_path, target_occupation=None)`  
-**Unified Output Contract:** [`AI/Pipeline/pipeline_schema.py`](file:///c:/Users/Sarvesh%20S.%20Kundale/Road2Hire/AI/Pipeline/pipeline_schema.py)  
+**Unified Output Contract:** [`AI/Pipeline/pipeline_schema.py`](AI/Pipeline/pipeline_schema.py)  
 
 ---
 
@@ -128,4 +128,3 @@ This audit evaluates the integrity, sequence, error handling, and data contracts
 ## 6. Audit Conclusion
 
 The Road2Hire pipeline architecture is coherent, modular, and methodologically sound. All 15 execution steps are connected with verified input/output contracts. With the standardization improvements identified above, the pipeline is ready for backend integration handover.
-
