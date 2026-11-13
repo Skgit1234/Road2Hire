@@ -329,7 +329,7 @@ test("dashboard loads authenticated summary and recent activity from mocked APIs
   await expect(page.getByRole("heading", { name: "Skill priority chart" })).toBeVisible();
   await expect(page.getByText("high", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Learning progress" })).toBeVisible();
-  await expect(page.getByText("in progress · 25%")).toBeVisible();
+  await expect(page.getByText("in progress (25%)")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Skill coverage chart" })).toBeVisible();
@@ -664,11 +664,11 @@ test("Learning Roadmap maps backend task states and refreshes after a progress u
   const patchStarted = deferred();
   const releasePatch = deferred();
 
-  await page.route("http://127.0.0.1:8001/learning-roadmap**", async (route) => {
+  await page.route("http://127.0.0.1:8000/learning-roadmap**", async (route) => {
     getCount += 1;
     await jsonResponse(route, 200, roadmapFixture("Java", 41, "in_progress", progress));
   });
-  await page.route("**/tasks/41", async (route) => {
+  await page.route("http://127.0.0.1:8000/tasks/41", async (route) => {
     patchRequest.method = route.request().method();
     patchRequest.authorization = route.request().headers().authorization;
     patchRequest.body = route.request().postData() ?? "";

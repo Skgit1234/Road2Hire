@@ -1,3 +1,4 @@
+
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -13,21 +14,56 @@ import {
 
 test("skill priorities and knowledge graph use the selected pipeline run", async () => {
   const requests = [];
+
   const mockFetch = async (url, init) => {
     requests.push({ url, init });
+
     if (url.endsWith("/priorities")) {
-      return Response.json({ pipeline_run_id: 27, target_occupation: null, items: [{ skill_name: "SQL", priority: "High" }] });
+      return Response.json({
+        pipeline_run_id: 27,
+        target_occupation: null,
+        items: [{ skill_name: "SQL", priority: "High" }],
+      });
     }
-    return Response.json({ pipeline_run_id: 27, summary: { total_nodes: 2 }, nodes: [{ id: "a", label: "SQL", kind: "esco_skill" }], relationships: [], scope: "Analysis graph" });
+
+    return Response.json({
+      pipeline_run_id: 27,
+      summary: { total_nodes: 2 },
+      nodes: [{ id: "a", label: "SQL", kind: "esco_skill" }],
+      relationships: [],
+      scope: "Analysis graph",
+    });
   };
 
-  const priorities = await getSkillPriorities("test-token", 27, mockFetch);
-  const graph = await getPipelineKnowledgeGraph("test-token", 27, mockFetch);
+  const priorities = await getSkillPriorities(
+    "test-token",
+    27,
+    mockFetch,
+  );
+
+  const graph = await getPipelineKnowledgeGraph(
+    "test-token",
+    27,
+    mockFetch,
+  );
+
   assert.equal(priorities.items[0].skill_name, "SQL");
   assert.equal(graph.nodes[0].label, "SQL");
-  assert.match(requests[0].url, /\/skill-gaps\/runs\/27\/priorities$/);
-  assert.match(requests[1].url, /\/skill-gaps\/runs\/27\/knowledge-graph$/);
-  assert.equal(requests[0].init.headers.Authorization, "Bearer test-token");
+
+  assert.match(
+    requests[0].url,
+    /\/skill-gaps\/runs\/27\/priorities$/,
+  );
+
+  assert.match(
+    requests[1].url,
+    /\/skill-gaps\/runs\/27\/knowledge-graph$/,
+  );
+
+  assert.equal(
+    requests[0].init.headers.Authorization,
+    "Bearer test-token",
+  );
 });
 
 test("analyzeSkillGap sends authenticated analysis request", async () => {
@@ -60,6 +96,7 @@ test("analyzeSkillGap sends authenticated analysis request", async () => {
   assert.equal(result.pipeline_run_id, 12);
   assert.equal(capturedUrl.endsWith("/skill-gaps/analyze"), true);
   assert.equal(capturedInit.method, "POST");
+
   assert.equal(
     capturedInit.headers.Authorization,
     "Bearer test-access-token",
@@ -129,6 +166,7 @@ test("getPipelineSkillGapHistory sends pagination and bearer token", async () =>
   assert.equal(capturedUrl.includes("/skill-gaps/history?"), true);
   assert.equal(capturedUrl.includes("limit=10"), true);
   assert.equal(capturedUrl.includes("offset=20"), true);
+
   assert.equal(
     capturedInit.headers.Authorization,
     "Bearer test-access-token",
@@ -266,10 +304,12 @@ test("task progress update sends PATCH payload and validates the response", asyn
   assert.equal(result.id, 7);
   assert.equal(capturedUrl.endsWith("/tasks/7"), true);
   assert.equal(capturedInit.method, "PATCH");
+
   assert.equal(
     capturedInit.headers.Authorization,
     "Bearer test-access-token",
   );
+
   assert.deepEqual(JSON.parse(capturedInit.body), {
     status: "in_progress",
     progress: 45,
